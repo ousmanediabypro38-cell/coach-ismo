@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>COACH ISMO</title>
+  <meta name="theme-color" content="#000000">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <div class="row">
+    <div><h1>COACH <span>ISMO</span></h1></div>
+    <span id="net" class="pill">…</span>
+  </div>
+
+  <section id="login" class="card hidden">
+    <p class="sub">Connexion</p>
+    <form id="loginForm">
+      <label for="email">E-mail</label>
+      <input id="email" type="email" autocomplete="username" required>
+      <label for="password">Mot de passe</label>
+      <input id="password" type="password" autocomplete="current-password" required>
+      <button type="submit">Se connecter</button>
+      <div id="loginMsg" class="msg" role="alert"></div>
+    </form>
+  </section>
+
+  <section id="home" class="card hidden">
+    <p class="sub">Phase 0 : la connexion fonctionne.</p>
+    <p>Connecté : <strong id="who"></strong></p>
+    <p>Base de données : <span id="db" class="pill">test…</span></p>
+    <p class="sub">Les écrans équipes, joueurs, carnet et matchs arrivent en phase 1A.</p>
+    <button id="logout" class="ghost">Se déconnecter</button>
+  </section>
+</main>
+<script src="vendor/supabase.js"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
