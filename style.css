@@ -22,3 +22,29 @@ button.ghost { background:transparent; color:var(--text); border:1px solid var(-
 .pill.ok { color:var(--green); border-color:var(--green); }
 .row { display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; }
 .hidden { display:none; }
+
+/* ---- phase 1A ---- */
+main { max-width: 760px; padding-top: 4vh; }
+#login { max-width: 460px; margin: 6vh auto 0; }
+.top { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:18px; }
+.top h1 { margin:0; }
+.status { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+h2 { font-size:1.2rem; margin:8px 0; } h3 { font-size:1rem; color:var(--muted); margin:22px 0 8px; font-weight:600; }
+button.small { width:auto; margin:0; padding:10px 14px; font-size:.9rem; min-height:44px; }
+button.ghost { margin-top:0; }
+form button { margin-top:16px; }
+form button.ghost { margin-top:10px; }
+button.danger { color:var(--bad); border-color:#4a2222; }
+.btns { display:flex; gap:8px; align-items:center; } .btns.wrap { flex-wrap:wrap; margin:10px 0; }
+.back { margin-bottom:10px; }
+.item { display:flex; justify-content:space-between; align-items:center; gap:12px; background:var(--card);
+  border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin:8px 0; }
+button.btnitem { width:100%; text-align:left; color:var(--text); font-weight:400; margin-top:8px; }
+.item .sub { margin:2px 0 0; font-size:.85rem; }
+.pill.warn { color:#fbbf24; border-color:#fbbf24; } .pill.bad { color:var(--bad); border-color:var(--bad); }
+.warnbox { border-color:#fbbf24; margin-bottom:16px; }
+select { width:100%; padding:14px; font-size:1rem; color:var(--text); background:#0a100c; border:1px solid var(--line); border-radius:10px; }
+.foot { margin-top:36px; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
+.toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:#14201a; border:1px solid var(--green);
+  padding:12px 18px; border-radius:10px; max-width:90vw; z-index:10; }
+.hidden { display:none !important; }

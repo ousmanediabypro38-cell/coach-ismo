@@ -11,33 +11,42 @@
 </head>
 <body>
 <main>
-  <div class="row">
-    <div><h1>COACH <span>ISMO</span></h1></div>
-    <span id="net" class="pill">…</span>
-  </div>
-
-  <section id="login" class="card hidden">
-    <p class="sub">Connexion</p>
-    <form id="loginForm">
-      <label for="email">E-mail</label>
-      <input id="email" type="email" autocomplete="username" required>
-      <label for="password">Mot de passe</label>
-      <input id="password" type="password" autocomplete="current-password" required>
-      <button type="submit">Se connecter</button>
-      <div id="loginMsg" class="msg" role="alert"></div>
-    </form>
+  <section id="login" class="hidden">
+    <h1>COACH <span>ISMO</span></h1>
+    <div class="card">
+      <p class="sub">Connexion</p>
+      <form id="loginForm">
+        <label for="email">E-mail</label>
+        <input id="email" type="email" autocomplete="username" required>
+        <label for="password">Mot de passe</label>
+        <input id="password" type="password" autocomplete="current-password" required>
+        <button type="submit">Se connecter</button>
+        <div id="loginMsg" class="msg" role="alert"></div>
+      </form>
+    </div>
   </section>
 
-  <section id="home" class="card hidden">
-    <p class="sub">Phase 0 : la connexion fonctionne.</p>
-    <p>Connecté : <strong id="who"></strong></p>
-    <p>Base de données : <span id="db" class="pill">test…</span></p>
-    <p class="sub">Les écrans équipes, joueurs, carnet et matchs arrivent en phase 1A.</p>
-    <button id="logout" class="ghost">Se déconnecter</button>
+  <section id="shell" class="hidden">
+    <header class="top">
+      <h1>COACH <span>ISMO</span></h1>
+      <div class="status">
+        <span id="net" class="pill">…</span>
+        <span id="syncpill" class="pill">…</span>
+        <button id="syncbtn" class="small ghost" type="button">Synchroniser</button>
+      </div>
+    </header>
+    <div id="app"></div>
+    <footer class="foot">
+      <span class="sub">Connecté : <strong id="who"></strong></span>
+      <button id="logout" class="small ghost" type="button">Se déconnecter</button>
+    </footer>
   </section>
+  <div id="toast" class="toast hidden" role="status"></div>
 </main>
 <script src="supabase-lib.js"></script>
 <script src="config.js"></script>
+<script src="db.js"></script>
+<script src="sync.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
