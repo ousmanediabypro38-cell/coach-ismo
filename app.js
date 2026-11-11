@@ -14,7 +14,7 @@
       else if (k === "class") e.className = v;
       else if (v !== false && v != null) e.setAttribute(k, v === true ? "" : v);
     }
-    for (const c of kids.flat()) if (c != null && c !== false) e.append(c.nodeType ? c : document.createTextNode(c));
+    for (const c of kids.flat(Infinity)) if (c != null && c !== false) e.append(c.nodeType ? c : document.createTextNode(c));
     return e;
   }
   const field = (label, input) => h("label", {}, label, input);
@@ -33,9 +33,10 @@
     let txt = "synchronisé", cls = "pill ok";
     if (syncState === "run") { txt = "synchronisation…"; cls = "pill"; }
     else if (syncState === "err") { txt = "erreur de synchro"; cls = "pill bad"; }
-    else if (c) { txt = c + " conflit(s)"; cls = "pill bad"; }
+    else if (c) { txt = c + " modif. en double"; cls = "pill bad"; }
     else if (n) { txt = n + " en attente"; cls = "pill warn"; }
     el.textContent = txt; el.className = cls;
+    if (window.CoachCal) { try { const b = await CoachCal.badge(); const t = $("tabconf"); t.textContent = "Conflits" + (b ? " (" + b + ")" : ""); } catch (e) {} }
   }
   async function doSync(manual) {
     if (!uid) return;
@@ -75,6 +76,7 @@
   const fullName = p => [p.first_name, p.last_name].filter(Boolean).join(" ");
 
   // ---------- écrans ----------
+  const TAB = { home: "teams", team: "teams", teamForm: "teams", playerForm: "teams", cal: "cal", event: "cal", eventForm: "cal", import: "cal", conflicts: "conflicts" };
   const app = () => $("app");
   function setView(v) { view = v; render(); window.scrollTo(0, 0); }
 
@@ -85,6 +87,8 @@
     else if (view.name === "team") root.append(...(await teamView(view.id)).flat(Infinity));
     else if (view.name === "teamForm") root.append(teamForm());
     else if (view.name === "playerForm") root.append(await playerForm(view.tsId, view.mId));
+    else if (window.Views && Views[view.name]) root.append(...[].concat(await Views[view.name](view)).flat(Infinity));
+    document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.tab === (TAB[view.name] || "teams")));
     refreshSyncPill();
   }
 
@@ -92,8 +96,8 @@
     const cs = await DB.conflicts();
     if (!cs.length) return [];
     return [h("section", { class: "card warnbox" },
-      h("h2", {}, "Conflits à résoudre"),
-      h("p", { class: "sub" }, "Cet élément a été modifié ici et ailleurs. Choisis la version à garder."),
+      h("h2", {}, "Modifications en double (synchronisation)"),
+      h("p", { class: "sub" }, "Cet élément a été modifié ici et sur un autre appareil. Choisis la version à garder."),
       cs.map(c => h("div", { class: "item" },
         h("div", {}, h("strong", {}, c.table), h("div", { class: "sub" }, JSON.stringify(summ(c.server)))),
         h("div", { class: "btns" },
@@ -255,6 +259,7 @@
     if (error) { msg.className = "msg err"; msg.textContent = "Connexion refusée : " + error.message; return; }
     $("password").value = ""; msg.textContent = ""; enter(data.user, false);
   });
+  document.querySelectorAll("#tabs button").forEach(b => b.addEventListener("click", () => setView({ name: b.dataset.view })));
   $("syncpill").addEventListener("click", () => setView({ name: "home" }));
   $("syncbtn").addEventListener("click", () => doSync(true));
   $("logout").addEventListener("click", async () => {
@@ -268,6 +273,7 @@
   window.addEventListener("offline", showNet);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) doSync(false); });
 
+  window.UI = { h, field, setView, toast, loadTeams, defaultSeason };
   start();
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});

@@ -35,6 +35,11 @@
         <button id="syncbtn" class="small ghost" type="button">Synchroniser</button>
       </div>
     </header>
+    <nav id="tabs" class="tabs">
+      <button type="button" data-tab="teams" data-view="home" class="active">Équipes</button>
+      <button type="button" data-tab="cal" data-view="cal">Calendrier</button>
+      <button type="button" data-tab="conflicts" data-view="conflicts" id="tabconf">Conflits</button>
+    </nav>
     <div id="app"></div>
     <footer class="foot">
       <span class="sub">Connecté : <strong id="who"></strong></span>
@@ -47,6 +52,8 @@
 <script src="config.js"></script>
 <script src="db.js"></script>
 <script src="sync.js"></script>
+<script src="conflicts.js"></script>
+<script src="calendar.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
