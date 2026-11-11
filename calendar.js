@@ -48,6 +48,7 @@
       s === "done" ? "Conflit géré" : s === "blocked" ? "Toujours en conflit" : "Conflit à traiter");
   }
   const decisionChip = e => e.conflict_decision === "delegue" ? h("span", { class: "pill" }, "Je me fais remplacer")
+    : e.conflict_decision === "autre" ? h("span", { class: "pill warn" }, "Autre solution")
     : e.conflict_decision === "present" ? h("span", { class: "pill ok" }, "Je suis présent") : null;
   const statusChip = e => e.status && e.status !== "prevu" ? h("span", { class: "pill " + (e.status === "annule" ? "bad" : "warn") }, STATUS[e.status]) : null;
   const changedChip = e => (e.change_log && e.change_log.length) ? h("span", { class: "pill warn" }, "Modifié") : null;
@@ -106,11 +107,11 @@
     const set = async v => { const cur = await DB.get("events", e.id); cur.conflict_decision = cur.conflict_decision === v ? null : v; await DB.save("events", cur); after(); };
     const btn = (v, label) => h("button", { type: "button", class: "choice" + (e.conflict_decision === v ? " on " + v : ""), onclick: () => set(v) },
       label, sug === v && !e.conflict_decision ? h("span", { class: "hint" }, " (suggéré)") : null);
-    return h("div", { class: "choices" }, btn("present", "Je suis présent"), btn("delegue", "Je me fais remplacer"));
+    return h("div", { class: "choices" }, btn("present", "Je suis présent"), btn("delegue", "Je me fais remplacer"), btn("autre", "Autre solution"));
   }
   function solutionBox(e, rows) {
     const note = h("span", { class: "sub saved" }, "");
-    const ta = h("textarea", { rows: rows || 3, placeholder: "Ma solution : qui me remplace, covoiturage, arrangement avec le club…" }, e.conflict_solution || "");
+    const ta = h("textarea", { rows: rows || 3, placeholder: "Ma solution : qui me remplace, auto-coaching, arrivée décalée, covoiturage, arrangement avec le club…" }, e.conflict_solution || "");
     ta.addEventListener("change", async () => {
       const cur = await DB.get("events", e.id); cur.conflict_solution = ta.value.trim() || null; await DB.save("events", cur); note.textContent = "Enregistré ✓";
     });

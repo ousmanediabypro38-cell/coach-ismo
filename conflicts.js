@@ -7,7 +7,7 @@
 //     pour les matchs à l'extérieur) + 15 minutes de marge entre les deux.
 //  4. Une rencontre annulée ou supprimée ne crée aucun conflit.
 //  5. Un conflit est « résolu » quand chaque rencontre du groupe a une décision (je suis présent / je me
-//     fais remplacer) et que deux rencontres « Impossible » ne sont pas toutes deux marquées « présent ».
+//     fais remplacer / autre solution) et que deux rencontres « Impossible » ne sont pas toutes deux marquées « présent ».
 (function () {
   const MIN = 60000, BUFFER = 15 * MIN;
   const DEFAULT_DURATION = { match: 120, entrainement: 90, reunion: 60, formation: 120, autre: 60 };
