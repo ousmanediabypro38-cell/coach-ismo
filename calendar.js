@@ -61,7 +61,7 @@
       h("div", { class: "evmain" },
         h("strong", {}, title(e, c)),
         h("div", { class: "sub" }, [e.competition, e.home_away ? (away ? "Extérieur" + (e.travel_minutes ? " · " + e.travel_minutes + " min" : "") : HA[e.home_away]) : null, e.venue_name].filter(Boolean).join(" · ")),
-        h("div", { class: "chips" }, statusChip(e), changedChip(e), conflictChip(e, c), decisionChip(e))));
+        h("div", { class: "chips" }, window.MatchUtil ? window.MatchUtil.resultChip(e) : null, statusChip(e), changedChip(e), conflictChip(e, c), decisionChip(e))));
   }
 
   async function calView() {
@@ -134,6 +134,7 @@
       h("h2", {}, title(e, c)),
       h("p", { class: "big" }, cap(dayFmt.format(new Date(e.starts_at))) + " · " + hm(e.starts_at) + " – " + hm(new Date(C.endMs(e)).toISOString())),
       h("div", { class: "chips" }, statusChip(e), changedChip(e), conflictChip(e, c)),
+      window.MatchUtil ? window.MatchUtil.eventCard(e) : null,
       h("div", { class: "card facts" },
         [["Type", KIND[e.kind] || e.kind], ["Compétition", e.competition], ["Lieu", [e.home_away ? HA[e.home_away] : null, e.venue_name].filter(Boolean).join(" · ")],
           ["Trajet", e.home_away === "exterieur" && e.travel_minutes ? e.travel_minutes + " min" : null], ["Départ au plus tard", dep]]

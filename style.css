@@ -219,3 +219,28 @@ button.choice.on.autre { background:var(--amber-soft); color:var(--amber); borde
 .gtitle { display:flex; justify-content:space-between; align-items:center; font:700 1.05rem var(--num); color:var(--green-hi); margin-bottom:6px; }
 .gtitle span { font:600 .85rem var(--num); color:var(--mut); }
 .gname { padding:3px 0; font-weight:500; }
+
+/* ---- Matchs : feuille de match, direct, temps de jeu ---- */
+.att-row.sheet { grid-template-columns:minmax(0,1fr) auto; }
+.chrono { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+.qname { font:700 1.5rem var(--num); color:var(--green-hi); }
+.chronov { font:700 2.6rem var(--num); font-variant-numeric:tabular-nums; letter-spacing:.02em; }
+.pgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; }
+.pcard { position:relative; display:flex; flex-direction:column; align-items:flex-start; gap:2px; min-height:78px; padding:10px 12px; text-align:left;
+  background:var(--s2); color:var(--text); border:1px solid var(--line2); border-radius:12px; cursor:pointer; }
+.pcard.court { border-color:var(--green); background:var(--green-soft); }
+.pcard.sel { outline:3px solid var(--amber); outline-offset:1px; background:var(--amber-soft); }
+.pnum { font:700 1.3rem var(--num); color:var(--green-hi); } .pn { font-weight:600; font-size:1rem; }
+.pt { font:600 .85rem var(--num); color:var(--mut); font-variant-numeric:tabular-nums; }
+.subbar { position:sticky; bottom:0; display:flex; gap:10px; flex-wrap:wrap; align-items:center; padding:12px 0; background:linear-gradient(transparent, var(--bg) 30%); }
+.bigbtn { min-height:56px; font-size:1.05rem; padding:0 22px; }
+.ptable { overflow-x:auto; }
+.prow { display:grid; grid-template-columns:minmax(120px,1.6fr) repeat(8, minmax(52px,.6fr)); gap:8px; align-items:center; padding:9px 4px; border-bottom:1px solid var(--line); font-variant-numeric:tabular-nums; }
+.prow.head { color:var(--mut); font-size:.82rem; font-weight:600; }
+.prow .r { text-align:right; } .prow .strong { font-weight:700; color:var(--green-hi); } .prow .pp { color:var(--mut); }
+.pstint { border-top:1px solid var(--line); } .pshead { display:flex; justify-content:space-between; width:100%; gap:12px; padding:12px 4px; background:transparent; border:0; color:var(--text); cursor:pointer; min-height:48px; }
+.psbody { padding:0 4px 12px; }
+.stintrow { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:6px 0; } .stintrow input { width:84px; } .stintrow select { width:auto; min-width:120px; }
+.matchcard { border-color:var(--line2); }
+
+.psl { min-width:130px; color:var(--mut); font-size:.9rem; } .pscores { margin-bottom:12px; }

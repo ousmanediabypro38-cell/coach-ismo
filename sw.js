@@ -1,7 +1,7 @@
 // Service worker : l'application s'ouvre sans réseau. Les fichiers sont servis depuis le cache
 // puis rafraîchis en arrière-plan (la mise à jour apparaît au lancement suivant).
-const CACHE = "coach-ismo-v14";
-const FILES = ["./", "index.html", "app.js", "db.js", "sync.js", "conflicts.js", "calendar.js", "carnet.js", "oussou.js", "venues.js", "importer.js", "icons.js", "barlow-400.woff2", "barlow-500.woff2", "barlow-600.woff2", "barlowc-600.woff2", "barlowc-700.woff2", "style.css", "config.js",
+const CACHE = "coach-ismo-v15";
+const FILES = ["./", "index.html", "app.js", "db.js", "sync.js", "conflicts.js", "calendar.js", "carnet.js", "oussou.js", "venues.js", "matchs.js", "importer.js", "icons.js", "barlow-400.woff2", "barlow-500.woff2", "barlow-600.woff2", "barlowc-600.woff2", "barlowc-700.woff2", "style.css", "config.js",
   "supabase-lib.js", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", e => {
