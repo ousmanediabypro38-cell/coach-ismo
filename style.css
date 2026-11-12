@@ -208,3 +208,6 @@ button.choice.on.autre { background:var(--amber-soft); color:var(--amber); borde
   .att-name { grid-area:n; } .att-row > .seg:not(.grp) { grid-area:s; } .att-row > .seg.grp { grid-area:g; justify-self:end; } .att-row { padding:8px 0; }
   .seg.ph { display:none; } .segb { padding:0 10px; font-size:.82rem; }
 }
+
+/* ---- Oussou Time ---- */
+.notebody { white-space:pre-wrap; line-height:1.6; font-size:1rem; overflow-wrap:anywhere; }

@@ -12,6 +12,8 @@
   const dayNum = new Intl.DateTimeFormat("fr-FR", { timeZone: TZ, day: "numeric" });
   const state = { filter: [], scope: "future", editBlock: null, newKind: null, lib: { q: "", kind: "" } };
 
+  window.CarnetState = state;
+
   async function context() {
     const teams = await U().loadTeams();
     const info = Object.fromEntries(teams.map(x => [x.ts.id, x]));
@@ -53,7 +55,8 @@
     const scope = (k, label) => h("button", { class: "chip" + (state.scope === k ? " on" : ""), onclick: () => { state.scope = k; U().setView({ name: "carnet" }); } }, label);
     return [
       h("div", { class: "row" }, h("h2", {}, "Carnet d'entraînement"),
-        h("button", { onclick: () => U().setView({ name: "sessionForm" }) }, Icon("plus", 18), "Nouvelle séance")),
+        h("div", { class: "btns" }, h("button", { class: "ghost", onclick: () => U().setView({ name: "importJson" }) }, Icon("upload", 18), "Importer"),
+          h("button", { onclick: () => U().setView({ name: "sessionForm" }) }, Icon("plus", 18), "Nouvelle séance"))),
       tabs("sessions"),
       h("div", { class: "chips filter" }, scope("future", "À venir"), scope("past", "Passées"),
         c.teams.map(x => h("button", { class: "chip" + (state.filter.includes(x.ts.id) ? " on" : ""), onclick: () => {
