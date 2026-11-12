@@ -24,7 +24,10 @@
     if (exact.length === 1) return exact[0];
     if (exact.length > 1) return exact.find(p => !norm(p.last_name || "").includes("u21")) || exact[0];
     const near = roster.filter(p => dist(norm(p.first_name), n) <= 1);
-    return near.length === 1 ? near[0] : null;
+    if (near.length === 1) return near[0];
+    const first = n.split(/\s+/)[0];   // « Flo Ali » → « Flo »
+    if (first && first !== n) { const f = roster.filter(p => norm(p.first_name) === first); if (f.length === 1) return f[0]; }
+    return null;
   }
 
   // L'état est gardé hors de l'écran : le sélecteur de fichier met l'appli en arrière-plan sur la tablette,
