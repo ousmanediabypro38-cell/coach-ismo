@@ -81,12 +81,12 @@
     return [
       h("div", { class: "row" }, h("h2", {}, "Calendrier"),
         h("div", { class: "btns" },
-          h("button", { class: "small", onclick: () => U().setView({ name: "eventForm" }) }, "+ Rencontre"),
-          h("button", { class: "small ghost", onclick: () => U().setView({ name: "import" }) }, "Importer"))),
+          h("button", { class: "small", onclick: () => U().setView({ name: "eventForm" }) }, Icon("plus", 18), "Rencontre"),
+          h("button", { class: "small ghost", onclick: () => U().setView({ name: "import" }) }, Icon("upload", 18), "Importer"))),
       h("div", { class: "weeknav" },
-        h("button", { class: "small ghost", onclick: () => { state.week = addDays(state.week, -7); U().setView({ name: "cal" }); } }, "←"),
+        h("button", { class: "small ghost", onclick: () => { state.week = addDays(state.week, -7); U().setView({ name: "cal" }); } }, Icon("chevL", 18)),
         h("div", { class: "weeklabel" }, "Semaine du " + shortFmt.format(parseKey(from)) + " au " + shortFmt.format(parseKey(to))),
-        h("button", { class: "small ghost", onclick: () => { state.week = addDays(state.week, 7); U().setView({ name: "cal" }); } }, "→"),
+        h("button", { class: "small ghost", onclick: () => { state.week = addDays(state.week, 7); U().setView({ name: "cal" }); } }, Icon("chevR", 18)),
         h("button", { class: "small ghost", onclick: () => { state.week = mondayOf(todayKey()); U().setView({ name: "cal" }); } }, "Aujourd'hui")),
       h("label", { class: "inline" }, "Aller à la date ", jump),
       c.teams.length ? h("div", { class: "chips filter" },
@@ -95,9 +95,9 @@
           filter = filter.includes(x.ts.id) ? filter.filter(i => i !== x.ts.id) : [...filter, x.ts.id]; saveFilter(); U().setView({ name: "cal" });
         } }, x.team.name))) : null,
       days.length ? days.map(d => h("section", {}, h("h3", {}, cap(dayFmt.format(parseKey(d.k)))), d.list.map(e => eventRow(e, c))))
-        : h("div", { class: "card" }, h("p", { class: "sub" }, "Aucune rencontre cette semaine."),
-          next ? h("button", { class: "small", onclick: () => { state.week = mondayOf(dkey(next.starts_at)); U().setView({ name: "cal" }); } },
-            "Prochaine rencontre : " + shortFmt.format(new Date(next.starts_at))) : h("p", { class: "sub" }, "Ajoute une rencontre ou importe ton planning.")),
+        : U().empty("calendar", "Aucune rencontre cette semaine", next ? "Tu peux aller directement à la prochaine." : "Ajoute une rencontre ou importe ton planning depuis Google Sheets.",
+          next ? h("button", { onclick: () => { state.week = mondayOf(dkey(next.starts_at)); U().setView({ name: "cal" }); } },
+            "Prochaine rencontre : " + shortFmt.format(new Date(next.starts_at))) : null),
     ];
   }
 
@@ -128,7 +128,7 @@
     const rerender = () => U().setView({ name: "event", id: e.id });
     const log = (e.change_log || []).slice().reverse();
     return [
-      h("button", { class: "small ghost back", onclick: () => U().setView({ name: "cal" }) }, "← Calendrier"),
+      h("button", { class: "small ghost back", onclick: () => U().setView({ name: "cal" }) }, Icon("chevL", 18), "Calendrier"),
       h("h2", {}, title(e, c)),
       h("p", { class: "big" }, cap(dayFmt.format(new Date(e.starts_at))) + " · " + hm(e.starts_at) + " – " + hm(new Date(C.endMs(e)).toISOString())),
       h("div", { class: "chips" }, statusChip(e), changedChip(e), conflictChip(e, c)),
@@ -258,7 +258,7 @@
           for (const e of g.events) { const s = c.an.info.get(e.id).suggestion; if (!e.conflict_decision && s) { const cur = await DB.get("events", e.id); cur.conflict_decision = s; await DB.save("events", cur); } }
           rerender();
         } }, "Appliquer mes suggestions (priorité des équipes)") : null,
-      )) : h("div", { class: "card" }, h("p", {}, state.cstatus === "todo" ? "Aucun conflit à traiter. 🎉" : "Rien à afficher ici."))
+      )) : U().empty("check", state.cstatus === "todo" ? "Aucun conflit à traiter" : "Rien à afficher ici", state.cstatus === "todo" ? "Toutes tes rencontres à venir sont compatibles, ou déjà gérées." : "Change de filtre pour voir les autres conflits.", null)
     ];
   }
 
@@ -306,7 +306,7 @@
       const f = e.target.files[0]; if (!f) return;
       pending = readPlanning(await f.text()); e.target.value = ""; U().setView({ name: "import" });
     } });
-    const back = h("button", { class: "small ghost back", onclick: () => { pending = null; U().setView({ name: "cal" }); } }, "← Calendrier");
+    const back = h("button", { class: "small ghost back", onclick: () => { pending = null; U().setView({ name: "cal" }); } }, Icon("chevL", 18), "Calendrier");
     if (!pending) return [back, h("h2", {}, "Importer un planning"),
       h("div", { class: "card" },
         h("p", {}, "Dans Google Sheets : ouvre ton planning, onglet « Calendrier complet », puis Fichier → Télécharger → Valeurs séparées par des virgules (.csv)."),
@@ -351,6 +351,7 @@
     const c = await context(), now = Date.now();
     return c.an.groups.filter(g => g.status !== "done" && g.events.some(e => C.endMs(e) >= now)).length;
   }
+  window.CalUtil = { hm, dkey, toISO, cap, dayFmt, shortFmt, pad, todayKey, parseKey, mondayOf };
   window.Views = { cal: calView, event: eventView, eventForm, conflicts: conflictsView, import: importView };
   window.CoachCal = { badge };
 })();

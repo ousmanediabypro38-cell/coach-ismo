@@ -2,58 +2,65 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>COACH ISMO</title>
-  <meta name="theme-color" content="#000000">
+  <meta name="theme-color" content="#080b09">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon-192.png">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<main>
-  <section id="login" class="hidden">
-    <h1>COACH <span>ISMO</span></h1>
-    <div class="card">
-      <p class="sub">Connexion</p>
+  <section id="login" class="login hidden">
+    <div class="login-7" aria-hidden="true">7</div>
+    <div class="login-panel">
+      <div class="brand"><span class="mark">7</span><span class="word">COACH <b>ISMO</b></span></div>
+      <h1>Connexion</h1>
       <form id="loginForm">
         <label for="email">E-mail</label>
         <input id="email" type="email" autocomplete="username" required>
         <label for="password">Mot de passe</label>
         <input id="password" type="password" autocomplete="current-password" required>
-        <button type="submit">Se connecter</button>
+        <button type="submit" class="block">Se connecter</button>
         <div id="loginMsg" class="msg" role="alert"></div>
       </form>
     </div>
   </section>
 
-  <section id="shell" class="hidden">
-    <header class="top">
-      <h1>COACH <span>ISMO</span></h1>
+  <div id="shell" class="app hidden">
+    <header class="side-top">
+      <div class="brand"><span class="mark">7</span><span class="word">COACH <b>ISMO</b></span></div>
       <div class="status">
         <span id="net" class="pill">…</span>
         <span id="syncpill" class="pill">…</span>
-        <button id="syncbtn" class="small ghost" type="button">Synchroniser</button>
       </div>
     </header>
-    <nav id="tabs" class="tabs">
-      <button type="button" data-tab="teams" data-view="home" class="active">Équipes</button>
-      <button type="button" data-tab="cal" data-view="cal">Calendrier</button>
-      <button type="button" data-tab="conflicts" data-view="conflicts" id="tabconf">Conflits</button>
+
+    <nav id="tabs" class="nav" aria-label="Navigation principale">
+      <button type="button" data-tab="teams" data-view="home" class="active"><span class="ico" data-icon="users"></span><span class="lbl">Équipes</span></button>
+      <button type="button" data-tab="cal" data-view="cal"><span class="ico" data-icon="calendar"></span><span class="lbl">Calendrier</span></button>
+      <button type="button" data-tab="conflicts" data-view="conflicts"><span class="ico" data-icon="alert"></span><span class="lbl" id="tabconf">Conflits</span></button>
+      <button type="button" data-tab="carnet" data-view="carnet"><span class="ico" data-icon="clipboard"></span><span class="lbl">Carnet</span></button>
     </nav>
-    <div id="app"></div>
-    <footer class="foot">
-      <span class="sub">Connecté : <strong id="who"></strong></span>
-      <button id="logout" class="small ghost" type="button">Se déconnecter</button>
+
+    <footer class="side-foot">
+      <button id="syncbtn" class="ghost small block" type="button"><span class="ico" data-icon="refresh"></span>Synchroniser</button>
+      <div class="who"><span class="sub" id="who"></span>
+        <button id="logout" class="ghost small icononly" type="button" aria-label="Se déconnecter"><span class="ico" data-icon="logout"></span></button></div>
     </footer>
-  </section>
+    <div class="big7" aria-hidden="true">7</div>
+
+    <main class="content"><div id="app"></div></main>
+  </div>
   <div id="toast" class="toast hidden" role="status"></div>
-</main>
+
 <script src="supabase-lib.js"></script>
 <script src="config.js"></script>
+<script src="icons.js"></script>
 <script src="db.js"></script>
 <script src="sync.js"></script>
 <script src="conflicts.js"></script>
 <script src="calendar.js"></script>
+<script src="carnet.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

@@ -1,11 +1,11 @@
 // Copie locale (IndexedDB) : l'application lit et écrit ici, la synchronisation se fait à part.
 (function () {
-  const STORES = ["teams", "seasons", "team_seasons", "players", "memberships", "events"];
+  const STORES = ["teams", "seasons", "team_seasons", "players", "memberships", "events", "sessions", "session_blocks"];
   let dbp;
   function open() {
     if (dbp) return dbp;
     dbp = new Promise((res, rej) => {
-      const r = indexedDB.open("coach-ismo", 2);
+      const r = indexedDB.open("coach-ismo", 3);
       r.onupgradeneeded = () => {
         const d = r.result;
         // Création des tables manquantes seulement : les données déjà présentes (phase 1A) sont conservées.

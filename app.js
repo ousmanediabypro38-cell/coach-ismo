@@ -76,18 +76,19 @@
   const fullName = p => [p.first_name, p.last_name].filter(Boolean).join(" ");
 
   // ---------- écrans ----------
-  const TAB = { home: "teams", team: "teams", teamForm: "teams", playerForm: "teams", cal: "cal", event: "cal", eventForm: "cal", import: "cal", conflicts: "conflicts" };
+  const TAB = { home: "teams", team: "teams", teamForm: "teams", playerForm: "teams", cal: "cal", event: "cal", eventForm: "cal", import: "cal", conflicts: "conflicts", carnet: "carnet", session: "carnet", sessionForm: "carnet" };
+  function empty(icon, title, text, action) { return h("div", { class: "empty" }, Icon(icon, 34), h("strong", {}, title), h("p", {}, text), action || null); }
   const app = () => $("app");
   function setView(v) { view = v; render(); window.scrollTo(0, 0); }
 
   async function render() {
     if (!uid) return;
     const root = app(); root.replaceChildren();
-    if (view.name === "home") root.append(...(await homeView()).flat(Infinity));
-    else if (view.name === "team") root.append(...(await teamView(view.id)).flat(Infinity));
+    if (view.name === "home") root.append(...(await homeView()).flat(Infinity).filter(x => x != null && x !== false));
+    else if (view.name === "team") root.append(...(await teamView(view.id)).flat(Infinity).filter(x => x != null && x !== false));
     else if (view.name === "teamForm") root.append(teamForm());
     else if (view.name === "playerForm") root.append(await playerForm(view.tsId, view.mId));
-    else if (window.Views && Views[view.name]) root.append(...[].concat(await Views[view.name](view)).flat(Infinity));
+    else if (window.Views && Views[view.name]) root.append(...[].concat(await Views[view.name](view)).flat(Infinity).filter(x => x != null && x !== false));
     document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.tab === (TAB[view.name] || "teams")));
     refreshSyncPill();
   }
@@ -112,11 +113,13 @@
     return [
       ...(await conflictsBlock()),
       h("div", { class: "row" }, h("h2", {}, "Mes équipes"),
-        h("button", { class: "small", onclick: () => setView({ name: "teamForm" }) }, "+ Nouvelle équipe")),
+        h("button", { onclick: () => setView({ name: "teamForm" }) }, Icon("plus", 18), "Nouvelle équipe")),
       list.length ? list.map(x => h("button", { class: "item btnitem", onclick: () => setView({ name: "team", id: x.ts.id }) },
         h("div", {}, h("strong", {}, x.team.name), h("div", { class: "sub" }, [x.team.category, x.team.club, x.season.label].filter(Boolean).join(" · "))),
         h("span", { class: "pill" }, "P" + (x.ts.priority || "?") + " · " + (x.ts.role || "")))
-      ) : h("p", { class: "sub" }, "Aucune équipe pour le moment. Crée la première avec « Nouvelle équipe »."),
+      
+      ) : empty("users", "Aucune équipe pour le moment", "Crée ta première équipe pour y ajouter ses joueurs, ses rencontres et ses séances.",
+        h("button", { onclick: () => setView({ name: "teamForm" }) }, Icon("plus", 18), "Créer une équipe")),
     ];
   }
 
@@ -153,12 +156,12 @@
       toast(n + " joueur(s) importé(s)."); render();
     } });
     return [
-      h("button", { class: "small ghost back", onclick: () => setView({ name: "home" }) }, "← Équipes"),
+      h("button", { class: "small ghost back", onclick: () => setView({ name: "home" }) }, Icon("chevL", 18), "Équipes"),
       h("h2", {}, team.name),
       h("p", { class: "sub" }, [team.category, team.club, season.label].filter(Boolean).join(" · ")),
       h("div", { class: "btns wrap" },
-        h("button", { class: "small", onclick: () => setView({ name: "playerForm", tsId }) }, "+ Joueur"),
-        h("button", { class: "small ghost", onclick: () => file.click() }, "Importer un fichier CSV"), file,
+        h("button", { class: "small", onclick: () => setView({ name: "playerForm", tsId }) }, Icon("plus", 18), "Joueur"),
+        h("button", { class: "small ghost", onclick: () => file.click() }, Icon("upload", 18), "Importer un CSV"), file,
         h("button", { class: "small ghost danger", onclick: async () => {
           if (!confirm("Supprimer cette équipe pour cette saison ? (les joueurs sont gardés)")) return;
           await DB.remove("team_seasons", ts); setView({ name: "home" });
@@ -168,7 +171,7 @@
         h("div", {}, h("strong", {}, (m.jersey_number != null ? "#" + m.jersey_number + " " : "") + fullName(p)),
           h("div", { class: "sub" }, [p.position, p.birth_year].filter(Boolean).join(" · "))),
         h("span", { class: "sub" }, "Modifier")))
-        : h("p", { class: "sub" }, "Aucun joueur. Ajoute-en un ou importe un fichier CSV."),
+        : empty("users", "Aucun joueur dans cette équipe", "Ajoute un joueur ou importe un fichier CSV avec ton effectif.", null),
     ];
   }
 
@@ -273,7 +276,8 @@
   window.addEventListener("offline", showNet);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) doSync(false); });
 
-  window.UI = { h, field, setView, toast, loadTeams, defaultSeason };
+  document.querySelectorAll("[data-icon]").forEach(e => e.replaceChildren(Icon(e.dataset.icon, e.closest(".nav") ? 22 : 18)));
+  window.UI = { h, field, setView, toast, loadTeams, defaultSeason, empty };
   start();
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
