@@ -32,7 +32,7 @@
 
   // L'état est gardé hors de l'écran : le sélecteur de fichier met l'appli en arrière-plan sur la tablette,
   // et l'écran est reconstruit à son retour (synchronisation). Sans cela, le fichier choisi serait perdu.
-  const st = { data: null, error: null, tsId: "", time: null };
+  const st = { data: null, error: null, tsId: "", time: null, addMissing: null };
 
   async function importView() {
     const teams = await U().loadTeams();
@@ -61,17 +61,22 @@
     let tsSel = null, time = null, plans = [];
     if (sessions.length) {
       const hint = norm(data.team_hint || "");
-      if (!st.tsId) { const g = teams.find(x => hint && norm(x.team.name).includes(hint)); if (g) st.tsId = g.ts.id; }
+      if (!st.tsId) { const g = teams.find(x => hint && norm(x.team.name).includes(hint)); st.tsId = g ? g.ts.id : (data.team_name ? "new" : ""); }
       tsSel = h("select", {}, h("option", { value: "" }, "— choisir l'équipe —"),
+        data.team_name ? h("option", { value: "new", selected: st.tsId === "new" }, "➕ Créer « " + data.team_name + " »") : null,
         teams.map(x => h("option", { value: x.ts.id, selected: st.tsId === x.ts.id }, x.team.name + " · " + x.season.label)));
       tsSel.addEventListener("change", () => { st.tsId = tsSel.value; U().setView({ name: "importJson" }); });
       time = h("input", { type: "time", value: st.time || "19:00" });
       time.addEventListener("change", () => { st.time = time.value; });
       const [mem, pl] = await Promise.all([DB.live("memberships"), DB.live("players")]);
       const P = Object.fromEntries(pl.map(p => [p.id, p]));
-      const roster = mem.filter(m => m.team_season_id === st.tsId && P[m.player_id]).map(m => P[m.player_id]);
+      const roster = st.tsId === "new" ? [] : mem.filter(m => m.team_season_id === st.tsId && P[m.player_id]).map(m => P[m.player_id]);
       plans = sessions.map(s => ({ s, att: (s.attendance || []).map(a => ({ ...a, player: matchPlayer(a.name, roster) })) }));
-      box.append(h("h3", { class: "tight" }, "Séances à importer"), U().field("Équipe", tsSel), U().field("Heure de début (à corriger ensuite si besoin)", time),
+      const missing = [...new Set(plans.flatMap(x => x.att.filter(a => !a.player).map(a => a.name)))];
+      if (st.addMissing === null) st.addMissing = st.tsId === "new";
+      const addBox = missing.length ? h("label", { class: "check" }, h("input", { type: "checkbox", checked: !!st.addMissing, onchange: e => { st.addMissing = e.target.checked; } }),
+        "Ajouter à l'effectif les " + missing.length + " joueurs non retrouvés (prénom seul, tu complètes le nom ensuite)") : null;
+      box.append(h("h3", { class: "tight" }, "Séances à importer"), U().field("Équipe", tsSel), U().field("Heure de début (à corriger ensuite si besoin)", time), addBox,
         ...plans.map(({ s, att }) => h("div", { class: "item" }, h("div", { style: "flex:1" },
           h("strong", {}, s.title), h("div", { class: "sub" }, s.date + " — " + (s.blocks || []).length + " blocs"
             + (st.tsId ? ", " + att.filter(a => a.player).length + "/" + att.length + " joueurs retrouvés"
@@ -81,7 +86,28 @@
     const go = h("button", { type: "button", onclick: async () => {
       if (sessions.length && !st.tsId) { U().toast("Choisis d'abord l'équipe."); return; }
       go.disabled = true; let ns = 0, nb = 0, na = 0, nn = 0;
-      const tsId = st.tsId, t0 = time ? time.value : "19:00";
+      let tsId = st.tsId; const t0 = time ? time.value : "19:00";
+      if (tsId === "new") {
+        const lab = U().defaultSeason;
+        const sea = (await DB.live("seasons")).find(x => x.label === lab) || await DB.save("seasons", { label: lab });
+        const t = await DB.save("teams", { name: data.team_name });
+        tsId = (await DB.save("team_seasons", { team_id: t.id, season_id: sea.id, role: data.role || "principal", priority: data.priority || 3 })).id;
+        st.tsId = tsId;
+      }
+      if (st.addMissing) {
+        const seen = {};
+        for (const { att } of plans) for (const a of att) {
+          if (a.player) continue; const k = norm(a.name); if (!k) continue;
+          if (!seen[k]) {
+            const pid = await sha("player:" + tsId + ":" + k);
+            const pl0 = await DB.get("players", pid);
+            seen[k] = pl0 && !pl0.deleted_at ? pl0 : await DB.save("players", { id: pid, first_name: a.name.trim(), last_name: null, deleted_at: null });
+            const mid = await sha("membership:" + tsId + ":" + pid);
+            if (!(await DB.get("memberships", mid))) await DB.save("memberships", { id: mid, player_id: pid, team_season_id: tsId, jersey_number: null });
+          }
+          a.player = seen[k];
+        }
+      }
       for (const { s, att } of plans) {
         const sid = await sha("session:" + s.key);
         const old = await DB.get("sessions", sid);
