@@ -57,7 +57,7 @@
 
   async function preview(data, teams, choose, file) {
     const box = h("section", { class: "card" });
-    const sessions = data.sessions || [], notes = data.notes || [];
+    const sessions = data.sessions || [], notes = data.notes || [], exos = data.exercises || [];
     let tsSel = null, time = null, plans = [];
     if (sessions.length) {
       const hint = norm(data.team_hint || "");
@@ -82,6 +82,7 @@
             + (st.tsId ? ", " + att.filter(a => a.player).length + "/" + att.length + " joueurs retrouvés"
               + (att.some(a => !a.player) ? " (non retrouvés : " + att.filter(a => !a.player).map(a => a.name).join(", ") + ")" : "") : ""))))));
     }
+    if (exos.length) box.append(h("h3", {}, "Bibliothèque d'exercices"), h("p", { class: "sub" }, exos.length + " exercices seront ajoutés (onglet Carnet → Exercices)."));
     if (notes.length) box.append(h("h3", {}, "Notes personnelles"), h("p", { class: "sub" }, notes.length + " notes seront ajoutées à Oussou Time."));
     const go = h("button", { type: "button", onclick: async () => {
       if (sessions.length && !st.tsId) { U().toast("Choisis d'abord l'équipe."); return; }
@@ -137,10 +138,16 @@
         const row = { id: nid, section: n.section || "oussou", title: n.title, body: n.body || null, source_date: n.date || null, position: i, deleted_at: null };
         await DB.save("notes", on ? { ...on, ...row } : row); nn++;
       }
-      U().toast("Import terminé : " + ns + " séance(s), " + nb + " bloc(s), " + na + " présence(s), " + nn + " note(s).");
+      for (const x of exos) {
+        const xid = await sha("exercise:" + x.key), ox = await DB.get("exercises", xid);
+        const row = { id: xid, title: x.title, kind: x.kind || null, setup: x.setup || null, description: x.description || null, coaching_points: x.coaching_points || null,
+          variants: x.variants || null, systems: x.systems || null, material: x.material || null, deleted_at: null };
+        await DB.save("exercises", ox ? { ...ox, ...row } : row);
+      }
+      U().toast("Import terminé : " + ns + " séance(s), " + nb + " bloc(s), " + na + " présence(s), " + nn + " note(s)" + (exos.length ? ", " + exos.length + " exercice(s)" : "") + ".");
       if (ns && window.CarnetState) { const last = plans.map(x => x.s.date).sort().pop(); window.CarnetState.scope = last < K().todayKey() ? "past" : "future"; window.CarnetState.filter = []; }
       st.data = null; st.error = null;
-      U().setView({ name: ns ? "carnet" : "oussou" });
+      U().setView({ name: ns ? "carnet" : exos.length ? "library" : "oussou" });
     } }, Icon("check", 18), "Importer");
     box.append(h("div", { class: "btns wrap" }, go, h("span", { class: "ghost" }, ""), choose), file);
     return box;
