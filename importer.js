@@ -27,65 +27,64 @@
     return near.length === 1 ? near[0] : null;
   }
 
+  // L'état est gardé hors de l'écran : le sélecteur de fichier met l'appli en arrière-plan sur la tablette,
+  // et l'écran est reconstruit à son retour (synchronisation). Sans cela, le fichier choisi serait perdu.
+  const st = { data: null, error: null, tsId: "", time: null };
+
   async function importView() {
     const teams = await U().loadTeams();
-    const box = h("div", {});
-    const input = h("input", { type: "file", accept: ".json,application/json" });
-    input.addEventListener("change", async () => {
-      box.replaceChildren();
-      const f = input.files[0]; if (!f) return;
-      let data;
-      try { data = JSON.parse(await f.text()); } catch (e) { box.append(h("p", { class: "msg" }, "Ce fichier n'est pas lisible.")); return; }
-      if (!data || data.format !== "coach-ismo-import") { box.append(h("p", { class: "msg" }, "Ce n'est pas un fichier d'import COACH ISMO.")); return; }
-      await preview(data, teams, box);
-    });
-    return [
-      h("button", { class: "small ghost back", onclick: () => U().setView({ name: "carnet" }) }, Icon("chevL", 18), "Retour"),
-      h("h2", {}, "Importer depuis OneNote"),
+    const back = h("button", { class: "small ghost back", onclick: () => { st.data = null; st.error = null; U().setView({ name: "carnet" }); } }, Icon("chevL", 18), "Retour");
+    const file = h("input", { type: "file", accept: ".json,application/json,text/plain", class: "hidden", onchange: async e => {
+      const f = e.target.files[0]; if (!f) return;
+      st.error = null; st.data = null;
+      try {
+        const d = JSON.parse(await f.text());
+        if (!d || d.format !== "coach-ismo-import") st.error = "Ce n'est pas un fichier d'import COACH ISMO.";
+        else { st.data = d; st.tsId = ""; st.time = d.default_time || "19:00"; }
+      } catch (err) { st.error = "Ce fichier n'est pas lisible."; }
+      e.target.value = ""; U().setView({ name: "importJson" });
+    } });
+    const choose = h("button", { onclick: () => file.click() }, Icon("upload", 18), st.data ? "Choisir un autre fichier" : "Choisir le fichier");
+    if (!st.data) return [back, h("h2", {}, "Importer depuis OneNote"),
       h("section", { class: "card" },
-        h("p", { class: "sub" }, "Choisis le fichier d'import que je t'ai préparé. Tu verras ce qui sera ajouté avant de valider. Réimporter le même fichier met à jour sans créer de doublon."),
-        input, box),
-    ];
+        h("p", { class: "sub" }, "Choisis le fichier d'import préparé à partir de tes pages OneNote. Tu verras ce qui sera ajouté avant de valider. Réimporter le même fichier met à jour sans créer de doublon."),
+        st.error ? h("p", { class: "msg err" }, st.error) : null, choose, file)];
+    return [back, h("h2", {}, "Importer depuis OneNote"), await preview(st.data, teams, choose, file)];
   }
 
-  async function preview(data, teams, box) {
+  async function preview(data, teams, choose, file) {
+    const box = h("section", { class: "card" });
     const sessions = data.sessions || [], notes = data.notes || [];
     let tsSel = null, time = null, plans = [];
     if (sessions.length) {
       const hint = norm(data.team_hint || "");
-      const guess = teams.find(x => hint && norm(x.team.name).includes(hint)) || null;
+      if (!st.tsId) { const g = teams.find(x => hint && norm(x.team.name).includes(hint)); if (g) st.tsId = g.ts.id; }
       tsSel = h("select", {}, h("option", { value: "" }, "— choisir l'équipe —"),
-        teams.map(x => h("option", { value: x.ts.id, selected: guess && guess.ts.id === x.ts.id }, x.team.name + " · " + x.season.label)));
-      time = h("input", { type: "time", value: data.default_time || "19:00" });
-      const out = h("div", {});
-      const render = async () => {
-        out.replaceChildren();
-        const tsId = tsSel.value;
-        const [mem, pl] = await Promise.all([DB.live("memberships"), DB.live("players")]);
-        const P = Object.fromEntries(pl.map(p => [p.id, p]));
-        const roster = mem.filter(m => m.team_season_id === tsId && P[m.player_id]).map(m => P[m.player_id]);
-        plans = sessions.map(s => {
-          const att = (s.attendance || []).map(a => ({ ...a, player: matchPlayer(a.name, roster) }));
-          return { s, att };
-        });
-        plans.forEach(({ s, att }) => out.append(h("div", { class: "item" }, h("div", { style: "flex:1" },
-          h("strong", {}, s.title), h("div", { class: "sub" }, s.date + " — " + (s.blocks || []).length + " blocs, " + att.filter(a => a.player).length + "/" + att.length + " joueurs retrouvés"
-            + (att.some(a => !a.player) ? " (non retrouvés : " + att.filter(a => !a.player).map(a => a.name).join(", ") + ")" : ""))))));
-      };
-      tsSel.addEventListener("change", render);
-      box.append(h("h3", {}, "Séances à importer"), U().field("Équipe", tsSel), U().field("Heure de début (à corriger ensuite si besoin)", time), out);
-      await render();
+        teams.map(x => h("option", { value: x.ts.id, selected: st.tsId === x.ts.id }, x.team.name + " · " + x.season.label)));
+      tsSel.addEventListener("change", () => { st.tsId = tsSel.value; U().setView({ name: "importJson" }); });
+      time = h("input", { type: "time", value: st.time || "19:00" });
+      time.addEventListener("change", () => { st.time = time.value; });
+      const [mem, pl] = await Promise.all([DB.live("memberships"), DB.live("players")]);
+      const P = Object.fromEntries(pl.map(p => [p.id, p]));
+      const roster = mem.filter(m => m.team_season_id === st.tsId && P[m.player_id]).map(m => P[m.player_id]);
+      plans = sessions.map(s => ({ s, att: (s.attendance || []).map(a => ({ ...a, player: matchPlayer(a.name, roster) })) }));
+      box.append(h("h3", { class: "tight" }, "Séances à importer"), U().field("Équipe", tsSel), U().field("Heure de début (à corriger ensuite si besoin)", time),
+        ...plans.map(({ s, att }) => h("div", { class: "item" }, h("div", { style: "flex:1" },
+          h("strong", {}, s.title), h("div", { class: "sub" }, s.date + " — " + (s.blocks || []).length + " blocs"
+            + (st.tsId ? ", " + att.filter(a => a.player).length + "/" + att.length + " joueurs retrouvés"
+              + (att.some(a => !a.player) ? " (non retrouvés : " + att.filter(a => !a.player).map(a => a.name).join(", ") + ")" : "") : ""))))));
     }
     if (notes.length) box.append(h("h3", {}, "Notes personnelles"), h("p", { class: "sub" }, notes.length + " notes seront ajoutées à Oussou Time."));
     const go = h("button", { type: "button", onclick: async () => {
-      if (sessions.length && !tsSel.value) { U().toast("Choisis d'abord l'équipe."); return; }
+      if (sessions.length && !st.tsId) { U().toast("Choisis d'abord l'équipe."); return; }
       go.disabled = true; let ns = 0, nb = 0, na = 0, nn = 0;
+      const tsId = st.tsId, t0 = time ? time.value : "19:00";
       for (const { s, att } of plans) {
         const sid = await sha("session:" + s.key);
         const old = await DB.get("sessions", sid);
-        const data = { id: sid, team_season_id: tsSel.value, starts_at: K().toISO(s.date, s.time || time.value), duration_min: old ? old.duration_min : 90,
+        const row0 = { id: sid, team_season_id: tsId, starts_at: K().toISO(s.date, s.time || t0), duration_min: old ? old.duration_min : 90,
           title: s.title, objective: s.objective || null, intensity: s.intensity || null, status: s.status || "prevue", deleted_at: null };
-        await DB.save("sessions", old ? { ...old, ...data } : data); ns++;
+        await DB.save("sessions", old ? { ...old, ...row0 } : row0); ns++;
         const existing = (await DB.all("session_blocks")).filter(b => b.session_id === sid && !b.deleted_at);
         const keep = new Set();
         for (let i = 0; i < (s.blocks || []).length; i++) {
@@ -111,9 +110,11 @@
       }
       U().toast("Import terminé : " + ns + " séance(s), " + nb + " bloc(s), " + na + " présence(s), " + nn + " note(s).");
       if (ns && window.CarnetState) { const last = plans.map(x => x.s.date).sort().pop(); window.CarnetState.scope = last < K().todayKey() ? "past" : "future"; window.CarnetState.filter = []; }
+      st.data = null; st.error = null;
       U().setView({ name: ns ? "carnet" : "oussou" });
     } }, Icon("check", 18), "Importer");
-    box.append(go);
+    box.append(h("div", { class: "btns wrap" }, go, h("span", { class: "ghost" }, ""), choose), file);
+    return box;
   }
 
   Object.assign(window.Views, { importJson: importView });
