@@ -82,6 +82,7 @@
       h("div", { class: "row" }, h("h2", {}, "Calendrier"),
         h("div", { class: "btns" },
           h("button", { class: "small", onclick: () => U().setView({ name: "eventForm" }) }, Icon("plus", 18), "Rencontre"),
+          h("button", { class: "small ghost", onclick: () => U().setView({ name: "venues" }) }, Icon("pin", 18), "Lieux"),
           h("button", { class: "small ghost", onclick: () => U().setView({ name: "import" }) }, Icon("upload", 18), "Importer"))),
       h("div", { class: "weeknav" },
         h("button", { class: "small ghost", onclick: () => { state.week = addDays(state.week, -7); U().setView({ name: "cal" }); } }, Icon("chevL", 18)),
@@ -127,6 +128,7 @@
     const dep = departBy(e);
     const rerender = () => U().setView({ name: "event", id: e.id });
     const log = (e.change_log || []).slice().reverse();
+    const ven = e.venue_id ? await DB.get("venues", e.venue_id) : null;
     return [
       h("button", { class: "small ghost back", onclick: () => U().setView({ name: "cal" }) }, Icon("chevL", 18), "Calendrier"),
       h("h2", {}, title(e, c)),
@@ -136,6 +138,10 @@
         [["Type", KIND[e.kind] || e.kind], ["Compétition", e.competition], ["Lieu", [e.home_away ? HA[e.home_away] : null, e.venue_name].filter(Boolean).join(" · ")],
           ["Trajet", e.home_away === "exterieur" && e.travel_minutes ? e.travel_minutes + " min" : null], ["Départ au plus tard", dep]]
           .filter(r => r[1]).map(r => h("div", { class: "fact" }, h("span", { class: "sub" }, r[0]), h("strong", {}, r[1])))),
+      ven && !ven.deleted_at ? h("div", { class: "card" }, h("strong", {}, ven.name), h("div", { class: "sub" }, [ven.address, ven.city].filter(Boolean).join(", ") || "Adresse à compléter"),
+        ven.notes ? h("p", { class: "sub", style: "white-space:pre-wrap;margin:8px 0 0" }, ven.notes) : null,
+        h("div", { class: "btns wrap" }, h("button", { class: "small", onclick: () => window.VenueUtil.openMaps(ven) }, Icon("pin", 16), "Itinéraire"),
+          h("button", { class: "small ghost", onclick: () => U().setView({ name: "venue", id: ven.id }) }, "Fiche du lieu"))) : null,
       h("div", { class: "btns wrap" },
         h("button", { class: "small", onclick: () => U().setView({ name: "eventForm", id: e.id }) }, "Modifier (date, heure, lieu…)"),
         h("button", { class: "small ghost danger", onclick: async () => { if (!confirm("Supprimer cette rencontre ?")) return; await DB.remove("events", e); U().setView({ name: "cal" }); } }, "Supprimer")),
@@ -174,6 +180,14 @@
     const ha = h("select", {}, h("option", { value: "" }, "—"), Object.entries(HA).map(([k, l]) => h("option", { value: k, selected: f.home_away === k }, l)));
     const venue = h("input", { value: val(f.venue_name, ""), placeholder: "ex. Gymnase des Ovalistes" });
     const travel = h("input", { type: "number", min: 0, step: 5, value: val(f.travel_minutes, ""), placeholder: "minutes, aller simple" });
+    const venues = (await DB.live("venues")).sort((a, b) => a.name.localeCompare(b.name));
+    const vSel = h("select", {}, h("option", { value: "" }, "— lieu non enregistré —"), venues.map(x => h("option", { value: x.id, selected: f.venue_id === x.id }, x.name + (x.city ? " · " + x.city : ""))));
+    vSel.addEventListener("change", () => {
+      const x = venues.find(y => y.id === vSel.value); if (!x) return;
+      venue.value = x.name; if (x.travel_minutes != null) travel.value = x.travel_minutes;
+      if (!ha.value) ha.value = x.is_home ? "domicile" : "exterieur";
+    });
+    const keep = h("input", { type: "checkbox", id: "keepv" });
     const status = h("select", {}, Object.entries(STATUS).map(([k, l]) => h("option", { value: k, selected: (f.status || "prevu") === k }, l)));
     const why = h("input", { placeholder: "Pourquoi ? (ex. demande du club adverse, salle indisponible)" });
     return h("form", { class: "card", onsubmit: async ev => {
@@ -182,7 +196,7 @@
       const d = +dur.value || 120;
       const next = { ...(old || {}), team_season_id: tsSel.value || null, kind: kind.value, starts_at: startIso,
         ends_at: new Date(Date.parse(startIso) + d * 60000).toISOString(), opponent: opp.value.trim() || null, competition: comp.value.trim() || null,
-        home_away: ha.value || null, venue_name: venue.value.trim() || null, travel_minutes: travel.value === "" ? null : +travel.value, status: status.value };
+        home_away: ha.value || null, venue_name: venue.value.trim() || null, venue_id: vSel.value || null, travel_minutes: travel.value === "" ? null : +travel.value, status: status.value };
       if (old) {
         const log = (old.change_log || []).slice();
         const add = (field, from, to) => { if ((from || "") !== (to || "")) log.push({ at: new Date().toISOString(), field, from: from || "", to: to || "", why: why.value.trim() || "" }); };
@@ -198,6 +212,10 @@
         const timeChanged = old.starts_at !== next.starts_at || C.durationMin(old) !== d || (old.travel_minutes || 0) !== (next.travel_minutes || 0) || old.home_away !== next.home_away || old.status !== next.status;
         if (timeChanged && old.conflict_decision) { next.conflict_decision = null; U().toast("Horaire modifié : revois ta décision de conflit pour cette rencontre."); }
       } else next.change_log = [];
+      if (keep.checked && !next.venue_id && next.venue_name) {
+        const nv = await DB.save("venues", { name: next.venue_name, travel_minutes: next.travel_minutes, is_home: next.home_away === "domicile" });
+        next.venue_id = nv.id;
+      }
       const saved = await DB.save("events", next);
       state.week = mondayOf(dkey(saved.starts_at));
       U().setView({ name: "event", id: saved.id });
@@ -206,7 +224,8 @@
       U().field("Équipe", tsSel), U().field("Type", kind),
       h("div", { class: "two" }, U().field("Date", date), U().field("Heure", time)),
       U().field("Durée (minutes)", dur), U().field("Adversaire", opp), U().field("Compétition", comp),
-      U().field("Domicile / extérieur", ha), U().field("Lieu", venue), U().field("Trajet depuis Grenoble (minutes, pour l'extérieur)", travel),
+      U().field("Domicile / extérieur", ha), venues.length ? U().field("Lieu enregistré", vSel) : null, U().field("Lieu", venue),
+      h("label", { class: "check", for: "keepv" }, keep, "Garder ce lieu dans mes lieux"), U().field("Trajet depuis Grenoble (minutes, pour l'extérieur)", travel),
       U().field("Statut", status),
       old ? U().field("Raison du changement (gardée dans l'historique)", why) : null,
       h("button", { type: "submit" }, "Enregistrer"),

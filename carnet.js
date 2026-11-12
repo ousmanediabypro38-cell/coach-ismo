@@ -89,12 +89,14 @@
     const dur = h("input", { type: "number", min: 15, step: 5, value: src.duration_min || 90 });
     const title = h("input", { value: src.title || "", placeholder: "ex. Transition défense-attaque" });
     const obj = h("textarea", { rows: 3, placeholder: "Ce que les joueurs doivent savoir faire à la fin de la séance" }, src.objective || "");
+    const vens = (await DB.live("venues")).sort((a, b) => a.name.localeCompare(b.name));
+    const vSel = h("select", {}, h("option", { value: "" }, "— salle non précisée —"), vens.map(x => h("option", { value: x.id, selected: src.venue_id === x.id }, x.name + (x.city ? " · " + x.city : ""))));
     const inten = h("select", {}, h("option", { value: "" }, "—"), Object.entries(INTENSITY).map(([k, l]) => h("option", { value: k, selected: src.intensity === k }, l)));
     const back = () => U().setView(old ? { name: "session", id: old.id } : v.dupFrom ? { name: "session", id: v.dupFrom } : { name: "carnet" });
     return h("form", { class: "card", onsubmit: async e => {
       e.preventDefault();
       const data = { team_season_id: tsSel.value || null, starts_at: K().toISO(date.value, time.value), duration_min: +dur.value || 90,
-        title: title.value.trim() || null, objective: obj.value.trim() || null, intensity: inten.value || null };
+        title: title.value.trim() || null, objective: obj.value.trim() || null, intensity: inten.value || null, venue_id: vSel.value || null };
       const saved = await DB.save("sessions", old ? { ...old, ...data } : { ...data, status: "prevue" });
       if (dupe) {
         const bl = (await DB.live("session_blocks")).filter(b => b.session_id === v.dupFrom).sort((a, b) => a.position - b.position);
@@ -109,7 +111,7 @@
       h("h2", {}, old ? "Modifier la séance" : dupe ? "Copier la séance" : "Nouvelle séance"),
       dupe ? h("p", { class: "sub" }, "Choisis la nouvelle date. Le déroulé est copié ; les présences et le bilan repartent de zéro.") : null,
       U().field("Équipe", tsSel), h("div", { class: "two" }, U().field("Date", date), U().field("Heure", time)),
-      U().field("Durée de la séance (minutes)", dur), U().field("Thème", title), U().field("Objectif", obj), U().field("Intensité", inten),
+      U().field("Durée de la séance (minutes)", dur), vens.length ? U().field("Salle", vSel) : null, U().field("Thème", title), U().field("Objectif", obj), U().field("Intensité", inten),
       h("button", { type: "submit" }, "Enregistrer"),
       h("button", { type: "button", class: "ghost", onclick: back }, "Annuler"));
   }
@@ -205,12 +207,14 @@
       ta.addEventListener("change", async () => { const cur = await DB.get("sessions", s.id); cur[key] = ta.value.trim() || null; await DB.save("sessions", cur); note.textContent = "Enregistré ✓"; });
       return h("div", {}, h("label", {}, label), ta, note);
     };
+    const ven = s.venue_id ? await DB.get("venues", s.venue_id) : null;
     const att = await attendanceSection(s, rerender);
     const gcard = await groupsCard(s);
     return [
       h("button", { class: "small ghost back", onclick: () => { state.editBlock = null; U().setView({ name: "carnet" }); } }, Icon("chevL", 18), "Carnet"),
       h("h2", {}, s.title || "Séance"),
       h("p", { class: "big" }, teamName(s, c) + " — " + K().cap(K().dayFmt.format(new Date(s.starts_at))) + ", " + K().hm(s.starts_at) + " à " + K().hm(endIso(s))),
+      ven && !ven.deleted_at ? h("p", { class: "sub" }, h("button", { class: "small ghost", onclick: () => window.VenueUtil.openMaps(ven) }, Icon("pin", 16), ven.name + (ven.city ? " · " + ven.city : ""))) : null,
       h("div", { class: "chips" }, statusChip(s), s.intensity ? h("span", { class: "pill" }, "Intensité " + INTENSITY[s.intensity].toLowerCase()) : null),
       h("div", { class: "btns wrap" },
         h("button", { class: "small", onclick: () => U().setView({ name: "sessionForm", id: s.id }) }, Icon("edit", 18), "Modifier"),
