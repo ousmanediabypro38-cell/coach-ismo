@@ -151,6 +151,25 @@
       })));
   }
 
+  // Équipes de la séance, visibles d'un coup d'œil en haut de la fiche
+  async function groupsCard(s) {
+    const [mem, pl, att] = await Promise.all([DB.live("memberships"), DB.live("players"), DB.live("session_attendance")]);
+    const P = Object.fromEntries(pl.map(p => [p.id, p])), J = {};
+    mem.filter(m => m.team_season_id === s.team_season_id).forEach(m => { J[m.player_id] = m.jersey_number; });
+    const mine = att.filter(a => a.session_id === s.id && P[a.player_id]);
+    if (!mine.some(a => a.status === "present" && a.group_label)) return null;
+    const nm = a => { const p = P[a.player_id]; return [p.first_name, p.last_name].filter(Boolean).join(" ") || "Joueur"; };
+    const by = f => mine.filter(f).sort((a, b) => nm(a).localeCompare(nm(b)));
+    const cols = GROUPS.map(g => [g, by(a => a.status === "present" && a.group_label === g)]).filter(x => x[1].length);
+    const free = by(a => a.status === "present" && !a.group_label);
+    const out = by(a => a.status !== "present");
+    const col = (title, list, cls) => h("div", { class: "gcol " + (cls || "") }, h("div", { class: "gtitle" }, title, h("span", {}, String(list.length))),
+      list.map(a => h("div", { class: "gname" }, nm(a))));
+    return h("section", { class: "card" }, h("h3", { class: "tight" }, "Équipes de la séance"),
+      h("div", { class: "groups" }, cols.map(([g, l]) => col("Équipe " + g, l)), free.length ? col("Sans équipe", free, "dim") : null),
+      out.length ? h("p", { class: "sub", style: "margin:12px 0 0" }, out.map(a => nm(a) + " (" + ATT[a.status].toLowerCase() + ")").join(", ")) : null);
+  }
+
   // ---------- fiche d'une séance ----------
   async function sessionView(v) {
     const c = await context();
@@ -187,6 +206,7 @@
       return h("div", {}, h("label", {}, label), ta, note);
     };
     const att = await attendanceSection(s, rerender);
+    const gcard = await groupsCard(s);
     return [
       h("button", { class: "small ghost back", onclick: () => { state.editBlock = null; U().setView({ name: "carnet" }); } }, Icon("chevL", 18), "Carnet"),
       h("h2", {}, s.title || "Séance"),
@@ -201,6 +221,7 @@
           await DB.remove("sessions", s); U().setView({ name: "carnet" });
         } }, Icon("trash", 18), "Supprimer")),
       s.objective ? h("section", { class: "card" }, h("h3", { class: "tight" }, "Objectif"), h("p", { style: "margin:8px 0 0;white-space:pre-wrap" }, s.objective)) : null,
+      gcard,
       h("h3", {}, "Déroulé"),
       used ? h("div", { class: "sub" }, used + " min notées sur " + planned + (used > planned ? " : dépasse de " + (used - planned) + " min" : " : il reste " + (planned - used) + " min")) : h("div", { class: "sub" }, "Les durées se notent bloc par bloc, à ta façon."),
       used ? h("div", { class: "meter" + (used > planned ? " over" : "") }, h("i", { style: "width:" + Math.min(100, Math.round(used / planned * 100)) + "%" })) : null,

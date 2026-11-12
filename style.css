@@ -211,3 +211,11 @@ button.choice.on.autre { background:var(--amber-soft); color:var(--amber); borde
 
 /* ---- Oussou Time ---- */
 .notebody { white-space:pre-wrap; line-height:1.6; font-size:1rem; overflow-wrap:anywhere; }
+
+/* ---- Équipes de la séance ---- */
+.groups { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-top:12px; }
+.gcol { background:var(--s2); border:1px solid var(--line); border-radius:12px; padding:12px 14px; }
+.gcol.dim { background:transparent; border-style:dashed; color:var(--mut); }
+.gtitle { display:flex; justify-content:space-between; align-items:center; font:700 1.05rem var(--num); color:var(--green-hi); margin-bottom:6px; }
+.gtitle span { font:600 .85rem var(--num); color:var(--mut); }
+.gname { padding:3px 0; font-weight:500; }
