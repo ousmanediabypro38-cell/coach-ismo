@@ -97,6 +97,7 @@
       FIELDS.map(([k, label]) => e[k] && e[k].trim() ? h("section", { class: "card" }, h("h3", { class: "tight" }, label), rich(e[k])) : null),
       videos ? h("section", { class: "card" }, h("h3", { class: "tight" }, "Vidéos et liens"), rich(videos)) : null,
       !FIELDS.some(([k]) => e[k] && e[k].trim()) && !videos ? h("p", { class: "sub" }, "Fiche vide pour l'instant : touche « Modifier » pour la remplir.") : null,
+      window.DiagramUtil ? await window.DiagramUtil.entrySection(e) : null,
       used.length ? h("section", { class: "card" }, h("h3", { class: "tight" }, "Travaillé en séance"),
         used.map(s => h("button", { class: "item btnitem", onclick: () => U().setView({ name: "session", id: s.id }) },
           h("div", { style: "flex:1" }, h("strong", {}, s.title || "Séance"), h("div", { class: "sub" }, window.CalUtil.cap(window.CalUtil.dayFmt.format(new Date(s.starts_at))))), Icon("chevR", 18)))) : null,

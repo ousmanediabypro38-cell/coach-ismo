@@ -280,3 +280,12 @@ button.choice.on.autre { background:var(--amber-soft); color:var(--amber); borde
 
 /* ---- Playbook ---- */
 .pbtext { line-height:1.6; } .xlink { color:var(--green-hi); text-decoration:underline; text-underline-offset:3px; overflow-wrap:anywhere; }
+
+/* ---- Schémas du playbook ---- */
+.diagwrap { margin:10px 0; } .dsvg { display:block; width:100%; height:auto; border-radius:12px; }
+.dsvg.edit { max-width:780px; touch-action:none; user-select:none; -webkit-user-select:none; cursor:crosshair; box-shadow:0 0 0 1px var(--line2); }
+.dtools { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0 4px; } .dtool { min-height:44px; }
+.dhint { margin:4px 0 0; min-height:1.4em; }
+.thumbs { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:14px; margin-top:12px; }
+.thumb { display:flex; flex-direction:column; gap:6px; align-items:flex-start; text-align:left; padding:10px; background:var(--s2); border:1px solid var(--line2); border-radius:14px; color:var(--text); cursor:pointer; }
+.thumb:hover { border-color:var(--green); } .thumb .dsvg { border-radius:8px; }
