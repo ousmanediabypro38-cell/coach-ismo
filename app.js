@@ -4,7 +4,7 @@
   const sb = window.COACH_SB || window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_KEY, {
     auth: { persistSession: true, autoRefreshToken: true }
   });
-  let uid = null, email = null, syncTimer = null, syncState = "idle", view = { name: "home" };
+  let uid = null, email = null, syncTimer = null, syncState = "idle", view = { name: "accueil" };
 
   // ---------- petit constructeur de DOM (jamais de innerHTML : pas de risque d'injection) ----------
   function h(tag, attrs, ...kids) {
@@ -77,7 +77,7 @@
   const fullName = p => [p.first_name, p.last_name].filter(Boolean).join(" ");
 
   // ---------- écrans ----------
-  const TAB = { home: "teams", team: "teams", teamForm: "teams", playerForm: "teams", cal: "cal", event: "cal", eventForm: "cal", import: "cal", conflicts: "conflicts", carnet: "carnet", session: "carnet", sessionForm: "carnet", library: "carnet", exerciseForm: "carnet", importJson: "carnet", venues: "cal", venue: "cal", venueForm: "cal", oussou: "oussou", note: "oussou", noteForm: "oussou", match: "cal", playtime: "cal", player: "teams", playerPdf: "teams", playbook: "playbook", playEntry: "playbook", playForm: "playbook", playDiagram: "playbook", convoc: "cal", teamLogo: "teams" };
+  const TAB = { accueil: "accueil", home: "teams", team: "teams", teamForm: "teams", playerForm: "teams", cal: "cal", event: "cal", eventForm: "cal", import: "cal", conflicts: "conflicts", carnet: "carnet", session: "carnet", sessionForm: "carnet", library: "carnet", exerciseForm: "carnet", importJson: "carnet", venues: "cal", venue: "cal", venueForm: "cal", oussou: "oussou", note: "oussou", noteForm: "oussou", match: "cal", playtime: "cal", player: "teams", playerPdf: "teams", playbook: "playbook", playEntry: "playbook", playForm: "playbook", playDiagram: "playbook", convoc: "cal", teamLogo: "teams" };
   function empty(icon, title, text, action) { return h("div", { class: "empty" }, Icon(icon, 34), h("strong", {}, title), h("p", {}, text), action || null); }
   const app = () => $("app");
   function setView(v) { view = v; render(); window.scrollTo(0, 0); }
@@ -113,7 +113,6 @@
     const list = await loadTeams();
     return [
       ...(await conflictsBlock()),
-      window.Backup ? await Backup.banner(() => setView({ name: "home" })) : null,
       h("div", { class: "row" }, h("h2", {}, "Mes équipes"),
         h("button", { onclick: () => setView({ name: "teamForm" }) }, Icon("plus", 18), "Nouvelle équipe")),
       list.length ? list.map(x => h("button", { class: "item btnitem", onclick: () => setView({ name: "team", id: x.ts.id }) },
@@ -123,7 +122,6 @@
       
       ) : empty("users", "Aucune équipe pour le moment", "Crée ta première équipe pour y ajouter ses joueurs, ses rencontres et ses séances.",
         h("button", { onclick: () => setView({ name: "teamForm" }) }, Icon("plus", 18), "Créer une équipe")),
-      window.Backup ? await Backup.card(() => setView({ name: "home" })) : null,
     ];
   }
 
@@ -276,7 +274,7 @@
     if (n && !confirm(n + " changement(s) pas encore synchronisé(s). Se déconnecter les garde sur la tablette, mais ils ne seront envoyés qu'à la prochaine connexion. Continuer ?")) return;
     try { await sb.auth.signOut(); } catch (e) {}
     try { localStorage.removeItem("coach_user"); } catch (e) {}
-    uid = null; view = { name: "home" }; start();
+    uid = null; view = { name: "accueil" }; start();
   });
   window.addEventListener("online", () => { showNet(); doSync(false); });
   window.addEventListener("offline", showNet);
