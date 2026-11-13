@@ -52,6 +52,7 @@
     }
     await refreshSyncPill(); render();
   }
+  window.AppSync = doSync;
   function scheduleSync() { clearTimeout(syncTimer); syncTimer = setTimeout(() => doSync(false), 2000); refreshSyncPill(); }
   DB.onchange = scheduleSync;
 
@@ -76,7 +77,7 @@
   const fullName = p => [p.first_name, p.last_name].filter(Boolean).join(" ");
 
   // ---------- écrans ----------
-  const TAB = { home: "teams", team: "teams", teamForm: "teams", playerForm: "teams", cal: "cal", event: "cal", eventForm: "cal", import: "cal", conflicts: "conflicts", carnet: "carnet", session: "carnet", sessionForm: "carnet", library: "carnet", exerciseForm: "carnet", importJson: "carnet", venues: "cal", venue: "cal", venueForm: "cal", oussou: "oussou", note: "oussou", noteForm: "oussou", match: "cal", playtime: "cal", player: "teams", playerPdf: "teams", playbook: "playbook", playEntry: "playbook", playForm: "playbook", playDiagram: "playbook", convoc: "cal" };
+  const TAB = { home: "teams", team: "teams", teamForm: "teams", playerForm: "teams", cal: "cal", event: "cal", eventForm: "cal", import: "cal", conflicts: "conflicts", carnet: "carnet", session: "carnet", sessionForm: "carnet", library: "carnet", exerciseForm: "carnet", importJson: "carnet", venues: "cal", venue: "cal", venueForm: "cal", oussou: "oussou", note: "oussou", noteForm: "oussou", match: "cal", playtime: "cal", player: "teams", playerPdf: "teams", playbook: "playbook", playEntry: "playbook", playForm: "playbook", playDiagram: "playbook", convoc: "cal", teamLogo: "teams" };
   function empty(icon, title, text, action) { return h("div", { class: "empty" }, Icon(icon, 34), h("strong", {}, title), h("p", {}, text), action || null); }
   const app = () => $("app");
   function setView(v) { view = v; render(); window.scrollTo(0, 0); }
@@ -115,7 +116,8 @@
       h("div", { class: "row" }, h("h2", {}, "Mes équipes"),
         h("button", { onclick: () => setView({ name: "teamForm" }) }, Icon("plus", 18), "Nouvelle équipe")),
       list.length ? list.map(x => h("button", { class: "item btnitem", onclick: () => setView({ name: "team", id: x.ts.id }) },
-        h("div", {}, h("strong", {}, x.team.name), h("div", { class: "sub" }, [x.team.category, x.team.club, x.season.label].filter(Boolean).join(" · "))),
+        window.LogoUtil ? LogoUtil.img(LogoUtil.teamLogoSrc(x.team), "tlogo sm") : null,
+        h("div", { style: "flex:1" }, h("strong", {}, x.team.name), h("div", { class: "sub" }, [x.team.category, x.team.club, x.season.label].filter(Boolean).join(" · "))),
         h("span", { class: "pill" }, "P" + (x.ts.priority || "?") + " · " + (x.ts.role || "")))
       
       ) : empty("users", "Aucune équipe pour le moment", "Crée ta première équipe pour y ajouter ses joueurs, ses rencontres et ses séances.",
@@ -157,10 +159,11 @@
     } });
     return [
       h("button", { class: "small ghost back", onclick: () => setView({ name: "home" }) }, Icon("chevL", 18), "Équipes"),
-      h("h2", {}, team.name),
-      h("p", { class: "sub" }, [team.category, team.club, season.label].filter(Boolean).join(" · ")),
+      h("div", { class: "teamhead" }, window.LogoUtil ? LogoUtil.img(LogoUtil.teamLogoSrc(team), "tlogo") : null, h("div", {}, h("h2", {}, team.name),
+      h("p", { class: "sub" }, [team.category, team.club, season.label].filter(Boolean).join(" · ")))),
       h("div", { class: "btns wrap" },
         h("button", { class: "small", onclick: () => setView({ name: "playerForm", tsId }) }, Icon("plus", 18), "Joueur"),
+        h("button", { class: "small ghost", onclick: () => setView({ name: "teamLogo", id: tsId }) }, Icon("edit", 18), "Logo"),
         h("button", { class: "small ghost", onclick: () => { if (window.PlaybookState) window.PlaybookState.ts = tsId; setView({ name: "playbook" }); } }, Icon("court", 18), "Playbook"),
         h("button", { class: "small ghost", onclick: () => file.click() }, Icon("upload", 18), "Importer un CSV"), file,
         h("button", { class: "small ghost danger", onclick: async () => {

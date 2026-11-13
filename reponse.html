@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#080b09">
+<title>Présence au match</title>
+<style>
+@font-face { font-family:"Barlow"; font-weight:400; src:url(barlow-400.woff2) format("woff2"); }
+@font-face { font-family:"Barlow"; font-weight:600; src:url(barlow-600.woff2) format("woff2"); }
+@font-face { font-family:"Barlow Condensed"; font-weight:700; src:url(barlowc-700.woff2) format("woff2"); }
+* { box-sizing:border-box; }
+body { margin:0; background:#080b09; color:#ecf1ed; font:400 18px/1.45 "Barlow", system-ui, sans-serif; min-height:100vh; }
+main { max-width:520px; margin:0 auto; padding:22px 18px 40px; }
+.brand { display:flex; align-items:center; gap:10px; color:#98a99e; font:700 1rem "Barlow Condensed", sans-serif; letter-spacing:.08em; }
+.mark { width:30px; height:30px; border-radius:8px; background:#23b574; color:#03160c; display:flex; align-items:center; justify-content:center; font:700 1.3rem "Barlow Condensed", sans-serif; }
+h1 { font:700 2rem/1.1 "Barlow Condensed", sans-serif; margin:20px 0 4px; }
+.sub { color:#98a99e; margin:0 0 16px; }
+.when { background:#111712; border:1px solid #2b392f; border-radius:14px; padding:14px 16px; margin:14px 0 22px; }
+.when b { display:block; font:700 1.3rem "Barlow Condensed", sans-serif; color:#3ccf8b; }
+h2 { font:600 1.1rem "Barlow", sans-serif; margin:0 0 10px; }
+.grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+button { font:600 1.1rem "Barlow", sans-serif; min-height:58px; border-radius:13px; border:1px solid #2b392f; background:#18201b; color:#ecf1ed; padding:10px 12px; cursor:pointer; }
+button:active { transform:scale(.98); }
+.yes { background:#23b574; color:#03160c; border-color:#23b574; } .maybe { background:#f2b23a; color:#1b1203; border-color:#f2b23a; } .no { background:#ef5b50; color:#1a0503; border-color:#ef5b50; }
+.stack { display:grid; gap:12px; } .ghost { background:transparent; color:#98a99e; min-height:48px; }
+.ok { background:rgba(35,181,116,.13); border:1px solid #23b574; border-radius:14px; padding:18px; margin:6px 0 16px; }
+.ok b { font:700 1.5rem "Barlow Condensed", sans-serif; display:block; }
+.err { background:rgba(239,91,80,.13); border:1px solid #ef5b50; border-radius:14px; padding:16px; }
+.hidden { display:none; }
+</style>
+</head>
+<body>
+<main>
+  <div class="brand"><span class="mark">7</span> COACH ISMO</div>
+  <div id="app"><p class="sub" style="margin-top:28px">Chargement…</p></div>
+</main>
+<script src="config.js"></script>
+<script>
+(function () {
+  const C = window.COACH_CONFIG, app = document.getElementById("app");
+  const token = new URLSearchParams(location.search).get("t") || "";
+  const LS = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+  const meKey = "ismo_me_" + token, ansKey = "ismo_ans_" + token;
+  const LBL = { present: "Présent", peut_etre: "Peut-être", absent: "Absent" };
+  let poll = null, me = LS.get(meKey);
+
+  async function rpc(fn, args) {
+    const r = await fetch(C.SUPABASE_URL + "/rest/v1/rpc/" + fn, { method: "POST", headers: { apikey: C.SUPABASE_KEY, "Content-Type": "application/json" }, body: JSON.stringify(args) });
+    if (!r.ok) throw new Error("http " + r.status);
+    return r.json();
+  }
+  const el = (tag, attrs, ...kids) => { const e = document.createElement(tag); for (const [k, v] of Object.entries(attrs || {})) { if (k === "onclick") e.onclick = v; else if (v != null) e.setAttribute(k, v); } kids.flat().forEach(c => e.append(c && c.nodeType ? c : document.createTextNode(c == null ? "" : c))); return e; };
+  const show = (...n) => { app.replaceChildren(...n.flat().filter(Boolean)); };
+  const fmtDate = iso => { const d = new Date(iso); const f = (o) => new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", ...o }).format(d); const j = f({ weekday: "long", day: "numeric", month: "long" }); return j.charAt(0).toUpperCase() + j.slice(1) + " à " + f({ hour: "2-digit", minute: "2-digit" }).replace(":", "h"); };
+  const label = p => p.name + (poll.players.filter(x => x.name === p.name).length > 1 && p.initial ? " " + p.initial + "." : "");
+
+  function head() { return [el("h1", {}, (poll.team || "Match") + (poll.opponent ? " — " + poll.opponent : "")),
+    el("div", { class: "when" }, el("b", {}, fmtDate(poll.starts_at)), poll.venue ? poll.venue : "")]; }
+
+  function pickPlayer() {
+    show(head(), el("h2", {}, "Qui es-tu ?"), el("div", { class: "grid" }, poll.players.map(p => el("button", { onclick: () => { me = p.id; LS.set(meKey, me); askStatus(); } }, label(p)))),
+      poll.players.length ? null : el("p", { class: "sub" }, "Aucun joueur dans la liste."));
+  }
+  function askStatus(msg) {
+    const p = poll.players.find(x => x.id === me); if (!p) { pickPlayer(); return; }
+    const done = LS.get(ansKey);
+    show(head(), done ? el("div", { class: "ok" }, el("b", {}, "Merci " + p.name + " !"), "Ta réponse est enregistrée : " + LBL[done] + ".") : null,
+      el("h2", {}, done ? "Tu veux changer ta réponse ?" : "Salut " + p.name + ", tu es là ?"),
+      el("div", { class: "stack" },
+        el("button", { class: "yes", onclick: () => send("present") }, "Je viens"),
+        el("button", { class: "maybe", onclick: () => send("peut_etre") }, "Peut-être"),
+        el("button", { class: "no", onclick: () => send("absent") }, "Je ne viens pas"),
+        el("button", { class: "ghost", onclick: () => { LS.set(meKey, ""); me = null; pickPlayer(); } }, "Ce n'est pas moi")),
+      msg ? el("p", { class: "err" }, msg) : null);
+  }
+  async function send(status) {
+    show(el("p", { class: "sub", style: "margin-top:28px" }, "Envoi…"));
+    try {
+      const r = await rpc("poll_answer", { p_token: token, p_player: me, p_status: status });
+      if (r && r.ok) { LS.set(ansKey, status); askStatus(); }
+      else if (r && r.error === "closed") closed(); else askStatus("Ça n'a pas marché. Réessaie, ou préviens ton coach.");
+    } catch (e) { askStatus("Pas de connexion. Réessaie dans un instant."); }
+  }
+  function closed() { show(el("h1", {}, "Réponses closes"), el("p", { class: "sub" }, "Ce match est passé, on ne peut plus répondre.")); }
+  async function start() {
+    if (!token) { show(el("h1", {}, "Lien incomplet"), el("div", { class: "err" }, "Demande le lien complet à ton coach.")); return; }
+    try {
+      poll = await rpc("poll_get", { p_token: token });
+      if (!poll) { show(el("h1", {}, "Lien invalide"), el("div", { class: "err" }, "Ce lien n'est plus actif. Demande-en un nouveau à ton coach.")); return; }
+      if (poll.closed) { closed(); return; }
+      me && poll.players.some(p => p.id === me) ? askStatus() : pickPlayer();
+    } catch (e) { show(el("h1", {}, "Pas de connexion"), el("div", { class: "err" }, "Impossible de charger la page. Vérifie ta connexion et recharge.")); }
+  }
+  start();
+})();
+</script>
+</body>
+</html>

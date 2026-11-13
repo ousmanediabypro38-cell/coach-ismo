@@ -61,11 +61,13 @@
     const svg = sv("svg", { viewBox: "0 0 " + W + " " + H, class: "convsvg", role: "img", "aria-label": "Convocation" });
     svg.append(sv("rect", { width: W, height: H, fill: "#fff" }),
       t(500, 75, c.title.toUpperCase(), 46), t(500, 124, c.dateLine, 36, { fill: GREEN }),
-      sv("circle", { cx: 251, cy: 241, r: 75, fill: GREEN }), t(251, 258, (c.club_short || "").toUpperCase(), 46, { fill: "#fff" }),
+      c.myLogo ? sv("image", { href: c.myLogo, x: 166, y: 156, width: 170, height: 170, preserveAspectRatio: "xMidYMid meet" })
+        : [sv("circle", { cx: 251, cy: 241, r: 75, fill: GREEN }), t(251, 258, (c.club_short || "").toUpperCase(), 46, { fill: "#fff" })],
       t(251, 349, c.club_label1, 24), c.club_label2 ? t(251, 378, c.club_label2, 24) : null,
       t(500, 296, "VS", 70),
-      sv("circle", { cx: 749, cy: 255, r: 78, fill: "none", stroke: "#666", "stroke-width": 4, "stroke-dasharray": "10 9" }),
-      t(749, 267, c.oppInitials, 38, { fill: "#666" }), t(749, 366, c.oppName.toUpperCase(), 26),
+      c.oppLogo ? sv("image", { href: c.oppLogo, x: 664, y: 170, width: 170, height: 170, preserveAspectRatio: "xMidYMid meet" })
+        : [sv("circle", { cx: 749, cy: 255, r: 78, fill: "none", stroke: "#666", "stroke-width": 4, "stroke-dasharray": "10 9" }), t(749, 267, c.oppInitials, 38, { fill: "#666" })],
+      t(749, 366, c.oppName.toUpperCase(), 26),
       t(500, 443, c.venueLine, 40), c.meetLine ? t(500, 486, c.meetLine, 32, { fill: GREEN }) : null,
       sv("rect", { x: 48, y: 517, width: 904, height: 643, fill: TAN, stroke: "#111", "stroke-width": 3 }),
       sv("rect", { x: 360, y: 518, width: 280, height: 330, fill: BLUE, stroke: "#fff", "stroke-width": 3 }),
@@ -163,22 +165,53 @@
     const cdata = { title: C.title + (C.num ? " N°" + C.num : ""), dateLine, club_short: C.club_short, club_label1: lab[0], club_label2: lab[1],
       oppName: opp, oppInitials: opp.split(/\s+/).map(w => w.charAt(0)).join("").slice(0, 3).toUpperCase(),
       venueLine: [venue ? venue.name : e.venue_name, K().hm(e.starts_at)].filter(Boolean).join(" - "), meetLine: C.meetup ? "RDV à " + C.meetup : "", snack: C.snack, tshirt: C.tshirt };
+    cdata.myLogo = await LogoUtil.dataUrl(LogoUtil.teamLogoSrc(t ? t.team : null)).catch(() => null);
+    const club = await LogoUtil.clubFor(e.opponent); cdata.oppLogo = club ? club.logo : null;
     const svg = visual(cdata, null, L.map(l => l.map(p => shortName(p, convoked))));
 
+    const oppFile = h("input", { type: "file", accept: "image/*", class: "hidden", onchange: async ev => {
+      const f = ev.target.files[0]; if (!f) return; ev.target.value = "";
+      try { await LogoUtil.setClub(e.opponent, await LogoUtil.pickImage(f)); rerender(); } catch (x) { U().toast("Cette image n'est pas lisible."); }
+    } });
     const inp = (label, key, ph, type) => { const i = h("input", { type: type || "text", value: C[key] || "", placeholder: ph || "" }); i.addEventListener("change", async () => { await saveC({ [key]: i.value.trim() }); rerender(); }); return U().field(label, i); };
+
+
+    // --- lien de réponse pour les joueurs ---
+    const pollUrl = e.poll_token ? new URL("reponse.html?t=" + e.poll_token, location.href).href : null;
+    const minors = t && /u\s*\d{2}|\bu1\d|cadet|minime|poussin|benjamin/i.test(t.team.name);
+    const makeLink = async () => {
+      if (minors && !confirm("Cette équipe est composée de mineurs. Le lien affiche les prénoms des joueurs à toute personne qui l'a. Créer quand même le lien ?")) return;
+      const b = new Uint8Array(16); crypto.getRandomValues(b);
+      const cur = await DB.get("events", e.id); cur.poll_token = Array.from(b, x => x.toString(16).padStart(2, "0")).join(""); await DB.save("events", cur); rerender();
+    };
+    const shareLink = async () => {
+      const text = "Présence au match" + (e.opponent ? " contre " + e.opponent : "") + " : réponds ici (30 secondes)";
+      try { if (navigator.share) { await navigator.share({ text, url: pollUrl }); return; } } catch (x) { if (x && x.name === "AbortError") return; }
+      try { await navigator.clipboard.writeText(text + "\n" + pollUrl); U().toast("Lien copié : colle-le dans ton groupe."); } catch (x) { U().toast("Copie impossible : " + pollUrl); }
+    };
+    const linkCard = h("section", { class: "card" }, h("h3", { class: "tight" }, "Lien de réponse pour les joueurs"),
+      !pollUrl ? [h("p", { class: "sub" }, "Crée un lien à envoyer dans ton groupe. Chaque joueur choisit son prénom et répond « Je viens / Peut-être / Je ne viens pas ». Les réponses arrivent ici toutes seules (bouton Actualiser)."),
+          h("div", { class: "btns wrap" }, h("button", { onclick: makeLink }, "Créer le lien"))]
+        : [h("p", { class: "sub" }, e._dirty ? "Le lien sera actif dès que l'appli aura synchronisé (pastille verte en haut). Attends avant de l'envoyer." : "Lien prêt. Il se ferme tout seul 1 jour après le match."),
+          h("input", { readonly: "true", value: pollUrl, onfocus: ev => ev.target.select() }),
+          h("div", { class: "btns wrap" },
+            h("button", { onclick: shareLink }, Icon("upload", 16), "Envoyer le lien"),
+            h("button", { class: "small", onclick: async () => { if (window.AppSync) await window.AppSync(true); rerender(); } }, "Actualiser les réponses"),
+            h("button", { class: "small ghost danger", onclick: async () => { if (!confirm("Désactiver ce lien ? Les joueurs ne pourront plus répondre avec.")) return; const cur = await DB.get("events", e.id); cur.poll_token = null; await DB.save("events", cur); rerender(); } }, "Désactiver"))]);
 
     return [
       h("button", { class: "small ghost back", onclick: () => U().setView({ name: "event", id: e.id }) }, Icon("chevL", 18), "Fiche de la rencontre"),
       h("h2", {}, "Convocation et présences"),
       h("p", { class: "big" }, (t ? t.team.name : "") + " — " + (e.opponent || "match") + " · " + K().cap(K().dayFmt.format(d))),
 
+      linkCard,
       h("h3", {}, "Présences"),
       h("section", { class: "card" },
         h("div", { class: "chips" }, h("span", { class: "pill ok" }, cnt("present") + " présents"), h("span", { class: "pill warn" }, cnt("peut_etre") + " peut-être"), h("span", { class: "pill bad" }, cnt("absent") + " absents"), h("span", { class: "pill" }, noAnswer.length + " sans réponse")),
         h("p", { class: "sub" }, "Note la réponse de chaque joueur. Un joueur « Présent » est convoqué ; un « Peut-être » se convoque d'une touche si tu veux le compter."),
         roster.length ? roster.map(p => { const a = mine[p.id] && !mine[p.id].deleted_at ? mine[p.id] : null;
           return h("div", { class: "att-row sheet" },
-            h("div", { class: "att-name" }, h("span", { class: "num" }, p.jersey != null ? p.jersey : ""), h("span", {}, p.first_name + (p.last_name ? " " + p.last_name : "")), p.position ? h("span", { class: "sub" }, p.position) : null),
+            h("div", { class: "att-name" }, h("span", { class: "num" }, p.jersey != null ? p.jersey : ""), h("span", {}, p.first_name + (p.last_name ? " " + p.last_name : "")), a && a.source === "lien" ? h("span", { class: "pill ok" }, "lien") : null, p.position ? h("span", { class: "sub" }, p.position) : null),
             h("div", { class: "btns" },
               a && a.status === "peut_etre" ? h("button", { type: "button", class: "small " + (a.convoked ? "" : "ghost"), onclick: () => toggleConvoked(p) }, a.convoked ? "Convoqué" : "Convoquer") : null,
               h("div", { class: "seg" }, Object.entries(ST).map(([k, l]) => h("button", { type: "button", class: "segb " + (k === "absent" ? "absent" : "") + (a && a.status === k ? " on" : ""), onclick: () => setStatus(p, k) }, l)))));
@@ -193,9 +226,15 @@
       h("section", { class: "card" },
         h("div", { class: "two" }, inp("Titre", "title", "Match de championnat"), inp("Numéro du match (facultatif)", "num", "ex. 6")),
         h("div", { class: "two" }, inp("Rendez-vous à", "meetup", "", "time"), inp("Tee-shirt (facultatif)", "tshirt", "ex. blanc")),
-        h("div", { class: "two" }, inp("Sigle du club (dans le rond)", "club_short", "ex. BBCEP"), inp("Équipe affichée", "club_label", "ex. Eybens · Seniors DM3 « Pré D2 »")),
+        inp("Équipe affichée sous le logo", "club_label", "ex. Eybens · Seniors DM3 « Pré D2 »"),
         inp("Message du bas", "snack", "Toute l'équipe, organisez vous !"),
         h("p", { class: "sub" }, "Les noms se rangent par poste : 1 en bas à gauche, 2 en bas à droite, 3 en haut à gauche, 4 en haut à droite, 5 dans la raquette. Un joueur sans poste reconnu va dans la case la moins remplie. Le poste se règle dans la fiche du joueur.")),
+      h("section", { class: "card" }, h("h3", { class: "tight" }, "Logo de l'adversaire"),
+        h("div", { class: "oppbox" }, cdata.oppLogo ? LogoUtil.img(cdata.oppLogo, "logoprev") : h("span", { class: "logoprev auto" }, "?"),
+          h("div", {}, h("p", { class: "sub" }, e.opponent ? (cdata.oppLogo ? "Logo de " + e.opponent + " enregistré : il sera repris à chaque match contre ce club." : "Choisis le logo de " + e.opponent + " (image de ta galerie ou d'une capture). Il sera retenu pour les prochains matchs contre ce club.") : "Indique d'abord le nom de l'adversaire dans la fiche de la rencontre."),
+            h("div", { class: "btns wrap" },
+              e.opponent ? h("button", { class: "small", onclick: () => oppFile.click() }, Icon("upload", 16), cdata.oppLogo ? "Changer le logo" : "Choisir le logo") : null,
+              cdata.oppLogo ? h("button", { class: "small ghost danger", onclick: async () => { await LogoUtil.setClub(e.opponent, null); rerender(); } }, "Retirer") : null))), oppFile),
       convoked.length ? h("section", { class: "card" }, h("h3", { class: "tight" }, "Changer la case d'un joueur"),
         h("div", { class: "boxfix" }, convoked.map(p => { const cur = boxes[p.id] != null ? boxes[p.id] : (POSTE_BOX[posteOf(p)] ?? ""); const sel = h("select", {}, h("option", { value: "" }, "Selon le poste"),
           ["Haut gauche", "Haut droite", "Raquette", "Bas gauche", "Bas droite"].map((n, i) => h("option", { value: i, selected: boxes[p.id] === i }, n)));
