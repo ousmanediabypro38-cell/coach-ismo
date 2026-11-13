@@ -324,6 +324,7 @@
       h("p", { class: "sub" }, r ? "Résultat enregistré. Ouvre la feuille pour le temps de jeu et le bilan." : "Feuille de match, changements en direct, résultat et temps de jeu."),
       h("div", { class: "btns wrap" },
         h("button", { onclick: () => U().setView({ name: "match", id: e.id }) }, Icon("ball", 18), e.live ? "Reprendre le suivi" : started || r ? "Ouvrir la feuille de match" : "Feuille de match"),
+        h("button", { class: "ghost", onclick: () => U().setView({ name: "convoc", id: e.id }) }, Icon("users", 18), "Convocation et présences"),
         h("button", { class: "ghost", onclick: () => U().setView({ name: "playtime", id: e.team_season_id, from: null }) }, "Temps de jeu de la saison")));
   }
 
