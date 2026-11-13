@@ -77,7 +77,7 @@
   const fullName = p => [p.first_name, p.last_name].filter(Boolean).join(" ");
 
   // ---------- écrans ----------
-  const TAB = { accueil: "accueil", home: "teams", team: "teams", teamForm: "teams", playerForm: "teams", cal: "cal", event: "cal", eventForm: "cal", import: "cal", conflicts: "conflicts", carnet: "carnet", session: "carnet", sessionForm: "carnet", library: "carnet", exerciseForm: "carnet", importJson: "carnet", venues: "cal", venue: "cal", venueForm: "cal", oussou: "oussou", note: "oussou", noteForm: "oussou", match: "cal", playtime: "cal", player: "teams", playerPdf: "teams", playbook: "playbook", playEntry: "playbook", playForm: "playbook", playDiagram: "playbook", convoc: "cal", teamLogo: "teams", formations: "formation", formation: "formation", formationForm: "formation", formationItem: "formation" };
+  const TAB = { accueil: "accueil", home: "teams", team: "teams", teamForm: "teams", playerForm: "teams", cal: "cal", event: "cal", eventForm: "cal", import: "cal", conflicts: "conflicts", carnet: "carnet", session: "carnet", sessionForm: "carnet", library: "carnet", exerciseForm: "carnet", importJson: "carnet", venues: "cal", venue: "cal", venueForm: "cal", oussou: "oussou", note: "oussou", noteForm: "oussou", match: "cal", playtime: "cal", player: "teams", playerPdf: "teams", playbook: "playbook", playEntry: "playbook", playForm: "playbook", playDiagram: "playbook", convoc: "cal", teamLogo: "teams", claudePrep: "accueil", formations: "formation", formation: "formation", formationForm: "formation", formationItem: "formation" };
   function empty(icon, title, text, action) { return h("div", { class: "empty" }, Icon(icon, 34), h("strong", {}, title), h("p", {}, text), action || null); }
   const app = () => $("app");
   function setView(v) { view = v; render(); window.scrollTo(0, 0); }
@@ -172,7 +172,8 @@
         } }, "Supprimer l'équipe")),
       h("h3", {}, "Effectif (" + roster.length + ")"),
       roster.length ? roster.map(({ m, p }) => h("button", { class: "item btnitem", onclick: () => setView({ name: "player", tsId, mId: m.id }) },
-        h("div", {}, h("strong", {}, (m.jersey_number != null ? "#" + m.jersey_number + " " : "") + fullName(p)),
+        window.SuiviUtil ? SuiviUtil.avatar(p, "sm") : null,
+        h("div", { style: "flex:1" }, h("strong", {}, (m.jersey_number != null ? "#" + m.jersey_number + " " : "") + fullName(p)),
           h("div", { class: "sub" }, [p.position, p.birth_year].filter(Boolean).join(" · "))),
         Icon("chevR", 18)))
         : empty("users", "Aucun joueur dans cette équipe", "Ajoute un joueur ou importe un fichier CSV avec ton effectif.", null),
@@ -267,6 +268,9 @@
     $("password").value = ""; msg.textContent = ""; enter(data.user, false);
   });
   document.querySelectorAll("#tabs button").forEach(b => b.addEventListener("click", () => setView({ name: b.dataset.view })));
+  const brand = document.querySelector(".side-top .brand");
+  if (brand) { brand.setAttribute("role", "button"); brand.setAttribute("tabindex", "0"); brand.setAttribute("aria-label", "Retour à l'accueil"); brand.style.cursor = "pointer";
+    brand.addEventListener("click", () => setView({ name: "accueil" })); brand.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setView({ name: "accueil" }); } }); }
   $("syncpill").addEventListener("click", () => setView({ name: "home" }));
   $("syncbtn").addEventListener("click", () => doSync(true));
   $("logout").addEventListener("click", async () => {

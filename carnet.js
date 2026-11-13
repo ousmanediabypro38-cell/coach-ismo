@@ -220,6 +220,7 @@
       h("div", { class: "btns wrap" },
         h("button", { class: "small", onclick: () => U().setView({ name: "sessionForm", id: s.id }) }, Icon("edit", 18), "Modifier"),
         h("button", { class: "small ghost", onclick: () => U().setView({ name: "sessionForm", dupFrom: s.id }) }, Icon("copy", 18), "Copier vers une autre date"),
+        h("button", { class: "small ghost", onclick: () => U().setView({ name: "claudePrep", subject: "session", target: s.id }) }, "Préparer pour Claude"),
         h("button", { class: "small ghost danger", onclick: async () => {
           if (!confirm("Supprimer cette séance et son déroulé ?")) return;
           for (const b of blocks) await DB.remove("session_blocks", b);

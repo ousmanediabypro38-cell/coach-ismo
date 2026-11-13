@@ -14,7 +14,7 @@
   // État des saisies hors de l'écran (l'appli se redessine à chaque synchronisation)
   const draft = {};                                   // observation en cours, par contexte
   const st = { filter: "all", nf: null, gf: { cycle: "", body: "" }, ef: null, lastCycle: "" };
-  const pdf = { profil: true, objectifs: true, bilan: false, nom: false };
+  const pdf = { profil: true, objectifs: true, bilan: false, nom: false, photo: true };
 
   async function rosterOf(tsId) {
     const [mem, pl] = await Promise.all([DB.live("memberships"), DB.live("players")]);
@@ -79,6 +79,21 @@
   }
 
   // ---------- fiche joueur ----------
+
+  // ---------- photo du joueur ----------
+  async function cropSquare(file, size) {      // recadre au centre en carré, réduit, JPEG léger
+    size = size || 320;
+    const url = URL.createObjectURL(file), img = new Image();
+    await new Promise((ok, ko) => { img.onload = ok; img.onerror = ko; img.src = url; });
+    const side = Math.min(img.naturalWidth, img.naturalHeight), sx = (img.naturalWidth - side) / 2, sy = (img.naturalHeight - side) / 3.2;
+    const cv = document.createElement("canvas"); cv.width = cv.height = size;
+    const cx = cv.getContext("2d"); cx.fillStyle = "#fff"; cx.fillRect(0, 0, size, size);
+    cx.drawImage(img, sx, Math.max(0, Math.min(sy, img.naturalHeight - side)), side, side, 0, 0, size, size); URL.revokeObjectURL(url);
+    return cv.toDataURL("image/jpeg", 0.85);
+  }
+  const initials = p => ((p.first_name || "?").charAt(0) + (p.last_name || "").charAt(0)).toUpperCase();
+  const avatar = (p, cls) => p.photo ? h("img", { class: "avatar " + (cls || ""), src: p.photo, alt: "" }) : h("span", { class: "avatar ph " + (cls || "") }, initials(p));
+
   async function playerView(v) {
     const m = await DB.get("memberships", v.mId), p = m ? await DB.get("players", m.player_id) : null;
     const back = () => U().setView({ name: "team", id: v.tsId });
@@ -151,11 +166,19 @@
         } }, "Enregistrer"), h("button", { class: "small ghost", onclick: () => { st.ef = null; rerender(); } }, "Annuler")));
     }
 
+    const photoIn = h("input", { type: "file", accept: "image/*", class: "hidden", onchange: async ev => {
+      const f = ev.target.files[0]; if (!f) return; ev.target.value = "";
+      try { const cur = await DB.get("players", p.id); cur.photo = await cropSquare(f); await DB.save("players", cur); rerender(); } catch (x) { U().toast("Cette photo n'est pas lisible."); }
+    } });
     return [
       h("button", { class: "small ghost back", onclick: back }, Icon("chevL", 18), team ? team.name : "Équipe"),
+      h("div", { class: "playerhead" }, avatar(p, "lg"), h("div", {},
+        h("div", { class: "btns wrap" }, h("button", { class: "small ghost", onclick: () => photoIn.click() }, Icon("upload", 16), p.photo ? "Changer la photo" : "Ajouter une photo"),
+          p.photo ? h("button", { class: "small ghost danger", onclick: async () => { const cur = await DB.get("players", p.id); cur.photo = null; await DB.save("players", cur); rerender(); } }, "Retirer") : null), photoIn)),
       h("div", { class: "row" }, h("h2", {}, (m.jersey_number != null ? "#" + m.jersey_number + " " : "") + full(p)),
         h("div", { class: "btns" },
           h("button", { class: "small", onclick: () => U().setView({ name: "playerPdf", tsId: v.tsId, mId: v.mId }) }, Icon("copy", 18), "PDF à partager"),
+          h("button", { class: "small ghost", onclick: () => U().setView({ name: "claudePrep", subject: "player", target: v.tsId + "|" + p.id }) }, "Préparer pour Claude"),
           h("button", { class: "small ghost", onclick: () => U().setView({ name: "playerForm", tsId: v.tsId, mId: v.mId }) }, Icon("edit", 18), "Identité"))),
       h("p", { class: "sub" }, [p.position, p.birth_year].filter(Boolean).join(" · ") || "Poste et année de naissance dans « Identité »."), playtime,
 
@@ -231,12 +254,12 @@
         h("h2", {}, "PDF à partager"),
         h("p", { class: "sub" }, "Une version propre à envoyer à la joueuse ou à ses parents. Tes observations + / − et le détail des entretiens n'y sont jamais."),
         h("section", { class: "card" }, h("div", { class: "pdfopts" },
-          chk("profil", "Profil (rôle, points forts, axes)", !has.profil), chk("objectifs", "Objectifs", !has.obj), chk("bilan", "Dernier bilan", !has.bil), chk("nom", "Inclure le nom de famille")),
+          chk("profil", "Profil (rôle, points forts, axes)", !has.profil), chk("objectifs", "Objectifs", !has.obj), chk("bilan", "Dernier bilan", !has.bil), chk("nom", "Inclure le nom de famille"), chk("photo", "Inclure la photo", !p.photo)),
           h("div", { class: "btns wrap" },
             h("button", { onclick: () => window.print() }, Icon("copy", 18), "Imprimer / Enregistrer en PDF"),
             h("button", { class: "ghost", onclick: async () => { try { await navigator.clipboard.writeText(lines.join("\n")); U().toast("Texte copié."); } catch (e) { U().toast("Copie impossible sur cet appareil."); } } }, "Copier en texte")))),
       h("article", { class: "paper" },
-        h("header", { class: "phead" }, h("div", { class: "pmark" }, "7"),
+        h("header", { class: "phead" }, pdf.photo && p.photo ? h("img", { class: "pphoto", src: p.photo, alt: "" }) : h("div", { class: "pmark" }, "7"),
           h("div", {}, h("h1", {}, name), h("div", { class: "psub" }, [m.jersey_number != null ? "N° " + m.jersey_number : null, p.position, team && team.name, season && season.label].filter(Boolean).join(" · ")))),
         pdf.profil && has.profil ? [p.role_note ? sec("Rôle dans l'équipe", para(p.role_note)) : null, p.strengths ? sec("Points forts", para(p.strengths)) : null, p.to_improve ? sec("Axes de progrès", para(p.to_improve)) : null] : null,
         pdf.objectifs && has.obj ? sec("Objectifs", cycles.map(c => h("div", {}, h("div", { class: "pcycle" }, c),
@@ -247,6 +270,6 @@
     ];
   }
 
-  window.SuiviUtil = { obsForSession, obsForMatch };
+  window.SuiviUtil = { obsForSession, obsForMatch, avatar };
   Object.assign(window.Views, { player: playerView, playerPdf: pdfView });
 })();

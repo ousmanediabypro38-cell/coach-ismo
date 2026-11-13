@@ -8,7 +8,7 @@
     const T = Object.fromEntries(teams.map(x => [x.ts.id, x.team.name]));
     const now = Date.now(), d0 = new Date(); d0.setHours(0, 0, 0, 0);
     const startToday = d0.getTime();
-    const hello = (new Date().getHours() < 18 ? "Bonjour" : "Bonsoir") + " coach";
+    const hello = (new Date().getHours() < 18 ? "Bonjour" : "Bonsoir") + " coach Ismo";
     const dateTxt = K().cap(new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", weekday: "long", day: "numeric", month: "long" }).format(new Date()));
     const rerender = () => U().setView({ name: "accueil" });
 
@@ -71,7 +71,8 @@
         tile("users", "Mes équipes", "Effectifs et fiches joueurs", { name: "home" }),
         tile("court", "Playbook", "Systèmes et schémas", { name: "playbook" }),
         tile("clipboard", "Exercices", "Bibliothèque", { name: "library" }),
-        tile("pin", "Lieux et trajets", "Salles, durées", { name: "venues" })),
+        tile("pin", "Lieux et trajets", "Salles, durées", { name: "venues" }),
+        tile("copy", "Préparer pour Claude", "Texte prêt à coller", { name: "claudePrep" })),
       results.length ? [h("h3", {}, "Derniers résultats"), h("section", { class: "card" }, results.map(e => h("button", { class: "item btnitem", onclick: () => U().setView({ name: "match", id: e.id }) },
         h("div", { style: "flex:1;min-width:0" }, h("strong", {}, (T[e.team_season_id] || "") + " — " + (e.opponent || "")), h("div", { class: "sub" }, K().cap(K().dayFmt.format(new Date(e.starts_at))))),
         window.MatchUtil ? MatchUtil.resultChip(e) : null)))] : null,

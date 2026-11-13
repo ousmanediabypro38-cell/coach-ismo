@@ -314,3 +314,10 @@ button.choice.on.autre { background:var(--amber-soft); color:var(--amber); borde
 .tile .icon { color:var(--green-hi); } .tile strong { font-size:1.05rem; } .tile:hover { border-color:var(--green); }
 .agday + .agday { margin-top:10px; } .aglbl { font:700 1rem var(--num); color:var(--green-hi); padding:2px 6px 0; }
 button.card.btnitem { width:100%; text-align:left; margin-bottom:10px; }
+
+/* ---- Photo des joueurs ---- */
+.avatar { width:48px; height:48px; border-radius:50%; object-fit:cover; flex:none; background:var(--s2); border:1px solid var(--line2); margin-right:12px; }
+.avatar.ph { display:inline-flex; align-items:center; justify-content:center; font:700 1.05rem var(--num); color:var(--green-hi); }
+.avatar.sm { width:44px; height:44px; } .avatar.lg { width:96px; height:96px; margin-right:0; font-size:1.8rem; }
+.playerhead { display:flex; align-items:center; gap:16px; margin:6px 0 10px; }
+.pphoto { width:84px; height:84px; border-radius:14px; object-fit:cover; flex:none; border:2px solid #23b574; }
