@@ -113,6 +113,7 @@
     const list = await loadTeams();
     return [
       ...(await conflictsBlock()),
+      window.Backup ? await Backup.banner(() => setView({ name: "home" })) : null,
       h("div", { class: "row" }, h("h2", {}, "Mes équipes"),
         h("button", { onclick: () => setView({ name: "teamForm" }) }, Icon("plus", 18), "Nouvelle équipe")),
       list.length ? list.map(x => h("button", { class: "item btnitem", onclick: () => setView({ name: "team", id: x.ts.id }) },
@@ -122,6 +123,7 @@
       
       ) : empty("users", "Aucune équipe pour le moment", "Crée ta première équipe pour y ajouter ses joueurs, ses rencontres et ses séances.",
         h("button", { onclick: () => setView({ name: "teamForm" }) }, Icon("plus", 18), "Créer une équipe")),
+      window.Backup ? await Backup.card(() => setView({ name: "home" })) : null,
     ];
   }
 
