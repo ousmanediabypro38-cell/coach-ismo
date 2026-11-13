@@ -48,6 +48,7 @@
     }
     return out;
   }
+  const CARPOOL = "Match à l'extérieur : anticipez le covoiturage !";
   const shortName = (p, all) => {
     const dup = all.filter(x => norm(x.first_name) === norm(p.first_name)).length > 1;
     return (p.first_name + (dup && p.last_name ? " " + p.last_name.charAt(0) + "." : "")).toUpperCase();
@@ -59,7 +60,8 @@
     const t = (x, y, s, size, o) => sv("text", { x, y, "text-anchor": "middle", "font-size": size, "font-weight": (o && o.w) || 700, fill: (o && o.fill) || "#111", "font-family": (o && o.f) || F }, s);
     const line = { stroke: "#fff", "stroke-width": 3, fill: "none" };
     const svg = sv("svg", { viewBox: "0 0 " + W + " " + H, class: "convsvg", role: "img", "aria-label": "Convocation" });
-    svg.append(sv("rect", { width: W, height: H, fill: "#fff" }),
+    const add = (...n) => svg.append(...n.flat(Infinity).filter(x => x != null && x !== false));
+    add(sv("rect", { width: W, height: H, fill: "#fff" }),
       t(500, 75, c.title.toUpperCase(), 46), t(500, 124, c.dateLine, 36, { fill: GREEN }),
       c.myLogo ? sv("image", { href: c.myLogo, x: 166, y: 156, width: 170, height: 170, preserveAspectRatio: "xMidYMid meet" })
         : [sv("circle", { cx: 251, cy: 241, r: 75, fill: GREEN }), t(251, 258, (c.club_short || "").toUpperCase(), 46, { fill: "#fff" })],
@@ -68,7 +70,9 @@
       c.oppLogo ? sv("image", { href: c.oppLogo, x: 664, y: 170, width: 170, height: 170, preserveAspectRatio: "xMidYMid meet" })
         : [sv("circle", { cx: 749, cy: 255, r: 78, fill: "none", stroke: "#666", "stroke-width": 4, "stroke-dasharray": "10 9" }), t(749, 267, c.oppInitials, 38, { fill: "#666" })],
       t(749, 366, c.oppName.toUpperCase(), 26),
-      t(500, 443, c.venueLine, 40), c.meetLine ? t(500, 486, c.meetLine, 32, { fill: GREEN }) : null,
+      t(500, c.address ? 430 : 443, c.venueLine, c.address ? 38 : 40),
+      c.address ? sv("text", { x: 500, y: 461, "text-anchor": "middle", "font-size": c.address.length > 62 ? 20 : 24, "font-weight": 500, fill: "#444", "font-family": F2, textLength: c.address.length * (c.address.length > 62 ? 9 : 11) > 880 ? 880 : null, lengthAdjust: "spacingAndGlyphs" }, c.address) : null,
+      c.meetLine ? t(500, c.address ? 499 : 486, c.meetLine, c.address ? 30 : 32, { fill: GREEN }) : null,
       sv("rect", { x: 48, y: 517, width: 904, height: 643, fill: TAN, stroke: "#111", "stroke-width": 3 }),
       sv("rect", { x: 360, y: 518, width: 280, height: 330, fill: BLUE, stroke: "#fff", "stroke-width": 3 }),
       sv("path", { d: "M120 518 V675 A385 385 0 0 0 880 675 V518", ...line }),
@@ -78,12 +82,13 @@
       sv("path", { d: "M400 1160 A100 100 0 0 1 600 1160", ...line }));
     const R = [[70, 587, 267, 146], [663, 587, 268, 146], [382, 791, 236, 155], [112, 980, 266, 146], [622, 980, 267, 146]];
     R.forEach(([x, y, w, hh], i) => {
-      svg.append(sv("rect", { x, y, width: w, height: hh, fill: "#fff", stroke: "#111", "stroke-width": 7 }));
+      add(sv("rect", { x, y, width: w, height: hh, fill: "#fff", stroke: "#111", "stroke-width": 7 }));
       const L = boxesNames[i], n = L.length || 1, size = n <= 2 ? 32 : n === 3 ? 30 : n === 4 ? 26 : 22, lh = n <= 3 ? 37 : n === 4 ? 31 : 26;
       const y0 = y + hh / 2 - (n - 1) * lh / 2 + size * 0.34;
-      (L.length ? L : ["—"]).forEach((s, k) => svg.append(t(x + w / 2, y0 + k * lh, s, size, { w: 600, fill: L.length ? "#111" : "#bbb" })));
+      (L.length ? L : ["—"]).forEach((s, k) => add(t(x + w / 2, y0 + k * lh, s, size, { w: 600, fill: L.length ? "#111" : "#bbb" })));
     });
-    svg.append(t(500, 1207, "Responsables Goûter", 38), t(500, 1253, c.snack || "", 28, { w: 500, f: F2 }), c.tshirt ? t(500, 1314, "Prévoir Tee-Shirt " + c.tshirt.toUpperCase() + " !", 34) : null);
+    add(t(500, 1207, "Responsables Goûter", 38), t(500, 1253, c.snack || "", 28, { w: 500, f: F2 }), c.tshirt ? t(500, 1314, "Prévoir Tee-Shirt " + c.tshirt.toUpperCase() + " !", 34) : null,
+      c.carpool ? sv("text", { x: 500, y: c.tshirt ? 1376 : 1330, "text-anchor": "middle", "font-size": 32, "font-weight": 700, fill: GREEN, "font-family": F, textLength: c.carpool.length * 14 > 900 ? 900 : null, lengthAdjust: "spacingAndGlyphs" }, c.carpool) : null);
     return svg;
   }
 
@@ -161,10 +166,13 @@
     const cut = teamLbl.indexOf(" «") > 0 ? teamLbl.indexOf(" «") : teamLbl.length > 24 ? teamLbl.lastIndexOf(" ", 24) : -1;
     const lab = cut > 0 ? [teamLbl.slice(0, cut).trim(), teamLbl.slice(cut).trim()] : [teamLbl, ""];
     const names = convoked.map(p => ({ id: p.id, p }));
+    const addrDefault = venue ? [venue.address, venue.city].filter(Boolean).join(", ") : "";
+    const addrNow = C.address != null ? C.address : addrDefault;
+    const away = e.home_away === "exterieur", carpoolOn = C.carpool != null ? !!C.carpool : away;
     const L = layout(convoked, boxes);
     const cdata = { title: C.title + (C.num ? " N°" + C.num : ""), dateLine, club_short: C.club_short, club_label1: lab[0], club_label2: lab[1],
       oppName: opp, oppInitials: opp.split(/\s+/).map(w => w.charAt(0)).join("").slice(0, 3).toUpperCase(),
-      venueLine: [venue ? venue.name : e.venue_name, K().hm(e.starts_at)].filter(Boolean).join(" - "), meetLine: C.meetup ? "RDV à " + C.meetup : "", snack: C.snack, tshirt: C.tshirt };
+      venueLine: [venue ? venue.name : e.venue_name, K().hm(e.starts_at)].filter(Boolean).join(" - "), address: addrNow, carpool: carpoolOn ? (C.carpool_text || CARPOOL) : "", meetLine: C.meetup ? "RDV à " + C.meetup : "", snack: C.snack, tshirt: C.tshirt };
     cdata.myLogo = await LogoUtil.dataUrl(LogoUtil.teamLogoSrc(t ? t.team : null)).catch(() => null);
     const club = await LogoUtil.clubFor(e.opponent); cdata.oppLogo = club ? club.logo : null;
     const svg = visual(cdata, null, L.map(l => l.map(p => shortName(p, convoked))));
@@ -207,13 +215,14 @@
       linkCard,
       h("h3", {}, "Présences"),
       h("section", { class: "card" },
-        h("div", { class: "chips" }, h("span", { class: "pill ok" }, cnt("present") + " présents"), h("span", { class: "pill warn" }, cnt("peut_etre") + " peut-être"), h("span", { class: "pill bad" }, cnt("absent") + " absents"), h("span", { class: "pill" }, noAnswer.length + " sans réponse")),
-        h("p", { class: "sub" }, "Note la réponse de chaque joueur. Un joueur « Présent » est convoqué ; un « Peut-être » se convoque d'une touche si tu veux le compter."),
+        h("div", { class: "chips" }, h("span", { class: "pill ok" }, cnt("present") + " présents"), h("span", { class: "pill warn" }, cnt("peut_etre") + " peut-être"), h("span", { class: "pill bad" }, cnt("absent") + " absents"), h("span", { class: "pill" }, noAnswer.length + " sans réponse"), h("span", { class: "pill " + (convoked.length > 12 ? "bad" : "ok") }, convoked.length + " convoqués")),
+        h("p", { class: "sub" }, "Note la réponse de chaque joueur. Un « Présent » est convoqué d'office : appuie sur « Convoqué ✓ » pour le mettre de côté (il n'apparaît plus dans les cases). Un « Peut-être » se convoque de la même façon."),
+        convoked.length > 12 ? h("p", { class: "sub", style: "color:#ef5b50" }, "Attention : une feuille de match accepte 12 joueurs au maximum, tu en as " + convoked.length + " de convoqués.") : null,
         roster.length ? roster.map(p => { const a = mine[p.id] && !mine[p.id].deleted_at ? mine[p.id] : null;
           return h("div", { class: "att-row sheet" },
             h("div", { class: "att-name" }, h("span", { class: "num" }, p.jersey != null ? p.jersey : ""), h("span", {}, p.first_name + (p.last_name ? " " + p.last_name : "")), a && a.source === "lien" ? h("span", { class: "pill ok" }, "lien") : null, p.position ? h("span", { class: "sub" }, p.position) : null),
             h("div", { class: "btns" },
-              a && a.status === "peut_etre" ? h("button", { type: "button", class: "small " + (a.convoked ? "" : "ghost"), onclick: () => toggleConvoked(p) }, a.convoked ? "Convoqué" : "Convoquer") : null,
+              a && (a.status === "peut_etre" || a.status === "present") ? h("button", { type: "button", class: "small " + (a.convoked ? "" : "ghost"), title: "Apparaît (ou non) dans les cases de la convocation", onclick: () => toggleConvoked(p) }, a.convoked ? "Convoqué ✓" : "Non convoqué") : null,
               h("div", { class: "seg" }, Object.entries(ST).map(([k, l]) => h("button", { type: "button", class: "segb " + (k === "absent" ? "absent" : "") + (a && a.status === k ? " on" : ""), onclick: () => setStatus(p, k) }, l)))));
         }) : h("p", { class: "sub" }, "Aucun joueur dans cette équipe."),
         h("h3", {}, "Coller la liste des présents"), ta,
@@ -227,6 +236,10 @@
         h("div", { class: "two" }, inp("Titre", "title", "Match de championnat"), inp("Numéro du match (facultatif)", "num", "ex. 6")),
         h("div", { class: "two" }, inp("Rendez-vous à", "meetup", "", "time"), inp("Tee-shirt (facultatif)", "tshirt", "ex. blanc")),
         inp("Équipe affichée sous le logo", "club_label", "ex. Eybens · Seniors DM3 « Pré D2 »"),
+        (() => { const i = h("input", { value: addrNow, placeholder: addrDefault || "ex. Gymnase des Ovalistes, 12 rue du Stade, 38320 Eybens" }); i.addEventListener("change", async () => { await saveC({ address: i.value.trim() }); rerender(); });
+          return U().field("Adresse du gymnase" + (addrDefault && C.address == null ? " (reprise de la fiche du lieu)" : ""), i); })(),
+        h("label", { class: "check" }, h("input", { type: "checkbox", checked: carpoolOn, onchange: async ev => { await saveC({ carpool: ev.target.checked }); rerender(); } }), "Message covoiturage" + (away ? " (match à l'extérieur : activé d'office)" : "")),
+        carpoolOn ? inp("Texte du message covoiturage", "carpool_text", CARPOOL) : null,
         inp("Message du bas", "snack", "Toute l'équipe, organisez vous !"),
         h("p", { class: "sub" }, "Les noms se rangent par poste : 1 en bas à gauche, 2 en bas à droite, 3 en haut à gauche, 4 en haut à droite, 5 dans la raquette. Un joueur sans poste reconnu va dans la case la moins remplie. Le poste se règle dans la fiche du joueur.")),
       h("section", { class: "card" }, h("h3", { class: "tight" }, "Logo de l'adversaire"),
