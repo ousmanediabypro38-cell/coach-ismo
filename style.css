@@ -244,3 +244,36 @@ button.choice.on.autre { background:var(--amber-soft); color:var(--amber); borde
 .matchcard { border-color:var(--line2); }
 
 .psl { min-width:130px; color:var(--mut); font-size:.9rem; } .pscores { margin-bottom:12px; }
+
+/* ---- Suivi individuel ---- */
+.obsrow { padding:10px 0; border-bottom:1px solid var(--line); } .obsrow:last-child { border-bottom:0; }
+.obstop { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+.obsbtns { display:flex; gap:8px; }
+.tonebtn { width:52px; min-height:44px; padding:0; font:700 1.4rem var(--num); background:transparent; border:1px solid var(--line2); color:var(--mut); border-radius:11px; cursor:pointer; }
+.tonebtn.plus.on { background:var(--green); color:var(--green-ink); border-color:var(--green); } .tonebtn.moins.on { background:var(--red); color:#1a0503; border-color:var(--red); }
+.tonebtn.plus:hover { color:var(--green-hi); } .tonebtn.moins:hover { color:var(--red); }
+.obsline { display:flex; align-items:center; gap:10px; margin:6px 0 0 46px; font-size:.95rem; } .obsline span:nth-child(2) { flex:1; min-width:0; overflow-wrap:anywhere; }
+.obsedit { display:flex; gap:8px; margin:8px 0 0 46px; align-items:center; } .obsin { flex:1; min-width:0; }
+.card.inner { background:var(--s2); margin:10px 0; padding:16px; }
+.goalcycle { margin-bottom:14px; } .strong { font-weight:600; color:var(--text); }
+.goal { display:flex; align-items:center; gap:10px; padding:6px 0; } .goal .gb { flex:1; min-width:0; overflow-wrap:anywhere; } .goal .gb.done { color:var(--mut); }
+.pbtn { cursor:pointer; min-height:34px; border:0; }
+.goaladd { display:grid; grid-template-columns:minmax(160px,1fr) minmax(200px,2fr) auto; gap:8px; align-items:center; margin-top:10px; }
+.obsitem { align-items:flex-start; }
+.pdfopts { display:flex; flex-wrap:wrap; gap:6px 24px; margin-bottom:6px; }
+.paper { background:#fff; color:#15201a; border-radius:12px; padding:40px 44px; max-width:760px; margin:16px 0; font-size:1.02rem; line-height:1.55; }
+.phead { display:flex; align-items:center; gap:18px; border-bottom:3px solid #23b574; padding-bottom:16px; margin-bottom:18px; }
+.pmark { width:52px; height:52px; border-radius:12px; background:#23b574; color:#03160c; font:700 2rem var(--num); display:flex; align-items:center; justify-content:center; flex:none; }
+.paper h1 { font:700 2rem var(--num); margin:0; color:#0c1a12; } .paper h3 { font:700 1.1rem var(--num); color:#157a4e; margin:0 0 4px; letter-spacing:.02em; }
+.psub { color:#5b6b61; font-size:.95rem; } .psec { margin:16px 0; } .ptext { margin:0; white-space:pre-wrap; }
+.pcycle { font-weight:600; margin-top:8px; } .paper ul { margin:4px 0 8px 20px; padding:0; } .paper li.ok { color:#157a4e; }
+.pfoot { margin-top:28px; padding-top:10px; border-top:1px solid #d8e2dc; color:#8a9a90; font-size:.82rem; }
+@media (max-width:720px) { .goaladd { grid-template-columns:1fr; } .obsline, .obsedit { margin-left:0; } .paper { padding:24px 20px; } }
+@media print {
+  html, body { background:#fff !important; }
+  #shell > *:not(.content), .noprint, .big7, #toast { display:none !important; }
+  #shell, .app { display:block !important; } .content { padding:0 !important; margin:0 !important; background:#fff !important; }
+  .paper { border-radius:0; padding:0; margin:0; max-width:none; }
+  @page { margin:18mm; }
+}
+.pmark, .phead, .paper * { -webkit-print-color-adjust:exact; print-color-adjust:exact; }

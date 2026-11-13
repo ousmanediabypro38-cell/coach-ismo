@@ -210,6 +210,7 @@
     const ven = s.venue_id ? await DB.get("venues", s.venue_id) : null;
     const att = await attendanceSection(s, rerender);
     const gcard = await groupsCard(s);
+    const obsCard = window.SuiviUtil ? await window.SuiviUtil.obsForSession(s, rerender) : null;
     return [
       h("button", { class: "small ghost back", onclick: () => { state.editBlock = null; U().setView({ name: "carnet" }); } }, Icon("chevL", 18), "Carnet"),
       h("h2", {}, s.title || "Séance"),
@@ -234,6 +235,8 @@
       h("div", { class: "quick" }, Object.entries(KINDS).map(([k, l]) => h("button", { class: "chip", onclick: () => startNew(k) }, "+ " + l))),
       h("h3", {}, "Présences et groupes"),
       h("section", { class: "card" }, att),
+      h("h3", {}, "Observations des joueurs"),
+      h("section", { class: "card" }, obsCard),
       h("h3", {}, "Bilan de la séance"),
       h("section", { class: "card bilan" },
         bil("bilan_worked", "Ce qui a bien marché", "Exercices ou consignes qui ont fonctionné"),

@@ -76,7 +76,7 @@
   const fullName = p => [p.first_name, p.last_name].filter(Boolean).join(" ");
 
   // ---------- écrans ----------
-  const TAB = { home: "teams", team: "teams", teamForm: "teams", playerForm: "teams", cal: "cal", event: "cal", eventForm: "cal", import: "cal", conflicts: "conflicts", carnet: "carnet", session: "carnet", sessionForm: "carnet", library: "carnet", exerciseForm: "carnet", importJson: "carnet", venues: "cal", venue: "cal", venueForm: "cal", oussou: "oussou", note: "oussou", noteForm: "oussou", match: "cal", playtime: "cal" };
+  const TAB = { home: "teams", team: "teams", teamForm: "teams", playerForm: "teams", cal: "cal", event: "cal", eventForm: "cal", import: "cal", conflicts: "conflicts", carnet: "carnet", session: "carnet", sessionForm: "carnet", library: "carnet", exerciseForm: "carnet", importJson: "carnet", venues: "cal", venue: "cal", venueForm: "cal", oussou: "oussou", note: "oussou", noteForm: "oussou", match: "cal", playtime: "cal", player: "teams", playerPdf: "teams" };
   function empty(icon, title, text, action) { return h("div", { class: "empty" }, Icon(icon, 34), h("strong", {}, title), h("p", {}, text), action || null); }
   const app = () => $("app");
   function setView(v) { view = v; render(); window.scrollTo(0, 0); }
@@ -167,10 +167,10 @@
           await DB.remove("team_seasons", ts); setView({ name: "home" });
         } }, "Supprimer l'équipe")),
       h("h3", {}, "Effectif (" + roster.length + ")"),
-      roster.length ? roster.map(({ m, p }) => h("button", { class: "item btnitem", onclick: () => setView({ name: "playerForm", tsId, mId: m.id }) },
+      roster.length ? roster.map(({ m, p }) => h("button", { class: "item btnitem", onclick: () => setView({ name: "player", tsId, mId: m.id }) },
         h("div", {}, h("strong", {}, (m.jersey_number != null ? "#" + m.jersey_number + " " : "") + fullName(p)),
           h("div", { class: "sub" }, [p.position, p.birth_year].filter(Boolean).join(" · "))),
-        h("span", { class: "sub" }, "Modifier")))
+        Icon("chevR", 18)))
         : empty("users", "Aucun joueur dans cette équipe", "Ajoute un joueur ou importe un fichier CSV avec ton effectif.", null),
     ];
   }

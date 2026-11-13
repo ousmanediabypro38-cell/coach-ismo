@@ -103,7 +103,13 @@
     const stints = await stintsOf(e.id);
     for (const s of stints) if (!P[s.player_id]) { const p = (await DB.get("players", s.player_id)); if (p) P[s.player_id] = { ...p, jersey: null }; }
     if (e.live) return [...head, liveView(e, P, stints)];
-    if (e.squad || stints.length || e.score_us != null) { releaseWake(); return [...head, ...summaryView(e, players, P, stints)]; }
+    if (e.squad || stints.length || e.score_us != null) {
+      releaseWake();
+      const sv = summaryView(e, players, P, stints);
+      if (window.SuiviUtil) sv.splice(sv.length - 1, 0, h("section", { class: "card" }, h("h3", { class: "tight" }, "Observations des joueurs"),
+        await window.SuiviUtil.obsForMatch(e, () => U().setView({ name: "match", id: e.id }))));
+      return [...head, ...sv];
+    }
     releaseWake();
     return [...head, setupView(e, players)];
   }
