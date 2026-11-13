@@ -277,3 +277,6 @@ button.choice.on.autre { background:var(--amber-soft); color:var(--amber); borde
   @page { margin:18mm; }
 }
 .pmark, .phead, .paper * { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+
+/* ---- Playbook ---- */
+.pbtext { line-height:1.6; } .xlink { color:var(--green-hi); text-decoration:underline; text-underline-offset:3px; overflow-wrap:anywhere; }

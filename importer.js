@@ -57,9 +57,9 @@
 
   async function preview(data, teams, choose, file) {
     const box = h("section", { class: "card" });
-    const sessions = data.sessions || [], notes = data.notes || [], exos = data.exercises || [];
+    const sessions = data.sessions || [], notes = data.notes || [], exos = data.exercises || [], pbs = data.playbook || [];
     let tsSel = null, time = null, plans = [];
-    if (sessions.length) {
+    if (sessions.length || pbs.length) {
       const hint = norm(data.team_hint || "");
       if (!st.tsId) { const g = teams.find(x => hint && norm(x.team.name).includes(hint)); st.tsId = g ? g.ts.id : (data.team_name ? "new" : ""); }
       tsSel = h("select", {}, h("option", { value: "" }, "— choisir l'équipe —"),
@@ -76,16 +76,17 @@
       if (st.addMissing === null) st.addMissing = st.tsId === "new";
       const addBox = missing.length ? h("label", { class: "check" }, h("input", { type: "checkbox", checked: !!st.addMissing, onchange: e => { st.addMissing = e.target.checked; } }),
         "Ajouter à l'effectif les " + missing.length + " joueurs non retrouvés (prénom seul, tu complètes le nom ensuite)") : null;
-      box.append(h("h3", { class: "tight" }, "Séances à importer"), U().field("Équipe", tsSel), U().field("Heure de début (à corriger ensuite si besoin)", time), addBox,
+      box.append(...[h("h3", { class: "tight" }, sessions.length ? "Séances à importer" : "Playbook à importer"), U().field("Équipe", tsSel), sessions.length ? U().field("Heure de début (à corriger ensuite si besoin)", time) : null, addBox,
         ...plans.map(({ s, att }) => h("div", { class: "item" }, h("div", { style: "flex:1" },
           h("strong", {}, s.title), h("div", { class: "sub" }, s.date + " — " + (s.blocks || []).length + " blocs"
             + (st.tsId ? ", " + att.filter(a => a.player).length + "/" + att.length + " joueurs retrouvés"
-              + (att.some(a => !a.player) ? " (non retrouvés : " + att.filter(a => !a.player).map(a => a.name).join(", ") + ")" : "") : ""))))));
+              + (att.some(a => !a.player) ? " (non retrouvés : " + att.filter(a => !a.player).map(a => a.name).join(", ") + ")" : "") : "")))))].filter(x => x != null));
     }
     if (exos.length) box.append(h("h3", {}, "Bibliothèque d'exercices"), h("p", { class: "sub" }, exos.length + " exercices seront ajoutés (onglet Carnet → Exercices)."));
+    if (pbs.length) box.append(h("h3", {}, "Playbook"), h("p", { class: "sub" }, pbs.length + " fiches seront ajoutées au playbook de l'équipe choisie : " + pbs.map(x => x.title).join(", ") + "."));
     if (notes.length) box.append(h("h3", {}, "Notes personnelles"), h("p", { class: "sub" }, notes.length + " notes seront ajoutées à Oussou Time."));
     const go = h("button", { type: "button", onclick: async () => {
-      if (sessions.length && !st.tsId) { U().toast("Choisis d'abord l'équipe."); return; }
+      if ((sessions.length || pbs.length) && !st.tsId) { U().toast("Choisis d'abord l'équipe."); return; }
       go.disabled = true; let ns = 0, nb = 0, na = 0, nn = 0;
       let tsId = st.tsId; const t0 = time ? time.value : "19:00";
       if (tsId === "new") {
@@ -133,6 +134,12 @@
           await DB.save("session_attendance", oa ? { ...oa, ...row } : row); na++;
         }
       }
+      for (let i = 0; i < pbs.length; i++) {
+        const x = pbs[i], pid = await sha("playbook:" + tsId + ":" + (x.key || x.title)), op = await DB.get("playbook_entries", pid);
+        const row = { id: pid, team_season_id: tsId, category: x.category || "attaque", title: x.title, call_name: x.call || null, status: op ? op.status : (x.status || "a_installer"),
+          summary: x.summary || null, principles: x.principles || null, technical: x.technical || null, variants: x.variants || null, videos: x.videos || null, position: i, deleted_at: null };
+        await DB.save("playbook_entries", op ? { ...op, ...row } : row);
+      }
       for (let i = 0; i < notes.length; i++) {
         const n = notes[i], nid = await sha("note:" + (n.key || n.title)), on = await DB.get("notes", nid);
         const row = { id: nid, section: n.section || "oussou", title: n.title, body: n.body || null, source_date: n.date || null, position: i, deleted_at: null };
@@ -144,10 +151,11 @@
           variants: x.variants || null, systems: x.systems || null, material: x.material || null, deleted_at: null };
         await DB.save("exercises", ox ? { ...ox, ...row } : row);
       }
-      U().toast("Import terminé : " + ns + " séance(s), " + nb + " bloc(s), " + na + " présence(s), " + nn + " note(s)" + (exos.length ? ", " + exos.length + " exercice(s)" : "") + ".");
+      U().toast("Import terminé : " + ns + " séance(s), " + nb + " bloc(s), " + na + " présence(s), " + nn + " note(s)" + (exos.length ? ", " + exos.length + " exercice(s)" : "") + (pbs.length ? ", " + pbs.length + " fiche(s) de playbook" : "") + ".");
       if (ns && window.CarnetState) { const last = plans.map(x => x.s.date).sort().pop(); window.CarnetState.scope = last < K().todayKey() ? "past" : "future"; window.CarnetState.filter = []; }
       st.data = null; st.error = null;
-      U().setView({ name: ns ? "carnet" : exos.length ? "library" : "oussou" });
+      if (pbs.length && window.PlaybookState) { window.PlaybookState.ts = tsId; window.PlaybookState.cat = "all"; try { localStorage.setItem("pb_ts", tsId); } catch (e) {} }
+      U().setView({ name: ns ? "carnet" : pbs.length ? "playbook" : exos.length ? "library" : "oussou" });
     } }, Icon("check", 18), "Importer");
     box.append(h("div", { class: "btns wrap" }, go, h("span", { class: "ghost" }, ""), choose), file);
     return box;

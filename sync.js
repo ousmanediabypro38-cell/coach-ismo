@@ -1,7 +1,7 @@
 // Synchronisation : d'abord on récupère les changements du serveur, ensuite on envoie les nôtres.
 // Si une ligne a été modifiée des deux côtés, elle n'est PAS écrasée : elle va dans l'écran de conflits.
 (function () {
-  const ORDER = ["teams", "seasons", "team_seasons", "players", "memberships", "venues", "events", "match_stints", "player_entries", "player_goals", "exercises", "sessions", "session_blocks", "session_attendance", "notes"]; // respecte les liens entre tables
+  const ORDER = ["teams", "seasons", "team_seasons", "players", "memberships", "venues", "events", "match_stints", "player_entries", "player_goals", "exercises", "playbook_entries", "sessions", "session_blocks", "session_attendance", "notes"]; // respecte les liens entre tables
   const LOCAL_ONLY = ["_dirty", "_rev", "_base", "updated_at_local", "updated_at", "created_at"]; // updated_at et created_at sont posés par le serveur (un created_at absent d'une ligne d'un lot serait envoyé « null »)
   let running = false;
 
