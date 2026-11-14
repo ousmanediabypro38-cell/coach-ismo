@@ -3,11 +3,11 @@
   const DB = window.DB, U = () => window.UI, h = (...a) => U().h(...a), K = () => window.CalUtil;
   const NS = "http://www.w3.org/2000/svg";
   const PTS = { m2: 2, m3: 3, fm: 1 }, OPP = { o1: 1, o2: 2, o3: 3 };
-  const zero = () => ({ pts: 0, fgm: 0, fga: 0, tpm: 0, tpa: 0, ftm: 0, fta: 0, fouls: 0 });
+  const zero = () => ({ pts: 0, fgm: 0, fga: 0, tpm: 0, tpa: 0, ftm: 0, fta: 0, fouls: 0, reb: 0, tov: 0 });
   function add(t, k) {
     if (k === "m2") { t.pts += 2; t.fgm++; t.fga++; } else if (k === "x2") { t.fga++; }
     else if (k === "m3") { t.pts += 3; t.fgm++; t.fga++; t.tpm++; t.tpa++; } else if (k === "x3") { t.fga++; t.tpa++; }
-    else if (k === "fm") { t.pts++; t.ftm++; t.fta++; } else if (k === "fx") { t.fta++; } else if (k === "foul") { t.fouls++; }
+    else if (k === "fm") { t.pts++; t.ftm++; t.fta++; } else if (k === "fx") { t.fta++; } else if (k === "foul") { t.fouls++; } else if (k === "reb") { t.reb++; } else if (k === "to") { t.tov++; }
   }
   const byPlayer = actions => { const by = {}; for (const a of actions) { if (!a.player_id || OPP[a.kind]) continue; add(by[a.player_id] || (by[a.player_id] = zero()), a.kind); } return by; };
   function scoreOf(actions) {
@@ -36,10 +36,10 @@
     return h("section", { class: "card" }, h("h3", { class: "tight" }, "Statistiques du match"),
       h("p", { class: "sub" }, "Saisies pendant le match depuis l'écran terrain. Le score " + sc.us + " – " + sc.them + " en est déduit."),
       h("div", { class: "tbl" }, h("table", { class: "stats" },
-        h("thead", {}, h("tr", {}, ["Joueur", "Min", "Pts", "Tirs", "3 pts", "LF", "Fautes"].map((x, i) => h("th", { class: i ? "r" : "" }, x)))),
+        h("thead", {}, h("tr", {}, ["Joueur", "Min", "Pts", "Tirs", "3 pts", "LF", "Reb", "BP", "Fautes"].map((x, i) => h("th", { class: i ? "r" : "" }, x)))),
         h("tbody", {}, rows.map(r => h("tr", {}, h("td", {}, (r.p.jersey != null ? "#" + r.p.jersey + " " : "") + nm(r.p)), h("td", { class: "r" }, mmss(r.m)), h("td", { class: "r strong" }, r.s.pts),
-          h("td", { class: "r" }, ratio(r.s.fgm, r.s.fga)), h("td", { class: "r" }, ratio(r.s.tpm, r.s.tpa)), h("td", { class: "r" }, ratio(r.s.ftm, r.s.fta)), h("td", { class: "r" + (r.s.fouls >= 4 ? " bad" : "") }, r.s.fouls)))),
-        h("tfoot", {}, h("tr", {}, h("td", {}, "Équipe"), h("td", { class: "r" }, ""), h("td", { class: "r strong" }, T.pts), h("td", { class: "r" }, ratio(T.fgm, T.fga) + " · " + pctTxt(T.fgm, T.fga)), h("td", { class: "r" }, ratio(T.tpm, T.tpa)), h("td", { class: "r" }, ratio(T.ftm, T.fta)), h("td", { class: "r" }, T.fouls))))));
+          h("td", { class: "r" }, ratio(r.s.fgm, r.s.fga)), h("td", { class: "r" }, ratio(r.s.tpm, r.s.tpa)), h("td", { class: "r" }, ratio(r.s.ftm, r.s.fta)), h("td", { class: "r" }, r.s.reb), h("td", { class: "r" }, r.s.tov), h("td", { class: "r" + (r.s.fouls >= 4 ? " bad" : "") }, r.s.fouls)))),
+        h("tfoot", {}, h("tr", {}, h("td", {}, "Équipe"), h("td", { class: "r" }, ""), h("td", { class: "r strong" }, T.pts), h("td", { class: "r" }, ratio(T.fgm, T.fga) + " · " + pctTxt(T.fgm, T.fga)), h("td", { class: "r" }, ratio(T.tpm, T.tpa)), h("td", { class: "r" }, ratio(T.ftm, T.fta)), h("td", { class: "r" }, T.reb), h("td", { class: "r" }, T.tov), h("td", { class: "r" }, T.fouls))))));
   }
 
   // ---- données d'un joueur, match par match ----
@@ -60,7 +60,7 @@
   }
   const METRICS = { pts: ["Points", r => r.tracked ? r.s.pts : null, v => String(v)], min: ["Minutes", r => r.min != null ? r.min / 60 : null, v => Math.round(v) + " min"],
     fg: ["Tirs %", r => r.tracked && r.s.fga ? pct(r.s.fgm, r.s.fga) : null, v => v + " %"], tp: ["3 pts %", r => r.tracked && r.s.tpa ? pct(r.s.tpm, r.s.tpa) : null, v => v + " %"],
-    ft: ["LF %", r => r.tracked && r.s.fta ? pct(r.s.ftm, r.s.fta) : null, v => v + " %"], fouls: ["Fautes", r => r.tracked ? r.s.fouls : null, v => String(v)] };
+    ft: ["LF %", r => r.tracked && r.s.fta ? pct(r.s.ftm, r.s.fta) : null, v => v + " %"], reb: ["Rebonds", r => r.tracked ? r.s.reb : null, v => String(v)], tov: ["Balles perdues", r => r.tracked ? r.s.tov : null, v => String(v)], fouls: ["Fautes", r => r.tracked ? r.s.fouls : null, v => String(v)] };
   const state = { metric: "pts" };
 
   function chart(rows, key) {
@@ -97,15 +97,15 @@
       h("h3", {}, "Matchs et statistiques (" + rows.length + ")"),
       h("section", { class: "card" },
         h("div", { class: "kpis" },
-          [["Matchs", rows.length], ["Min / match", mins.length ? mmss(sum(mins, r => r.min) / mins.length) : "—"], ["Pts / match", avg(T.pts, tr.length)], ["Tirs", pctTxt(T.fgm, T.fga)], ["3 pts", pctTxt(T.tpm, T.tpa)], ["LF", pctTxt(T.ftm, T.fta)], ["Fautes / match", avg(T.fouls, tr.length)]]
+          [["Matchs", rows.length], ["Min / match", mins.length ? mmss(sum(mins, r => r.min) / mins.length) : "—"], ["Pts / match", avg(T.pts, tr.length)], ["Tirs", pctTxt(T.fgm, T.fga)], ["3 pts", pctTxt(T.tpm, T.tpa)], ["LF", pctTxt(T.ftm, T.fta)], ["Reb / match", avg(T.reb, tr.length)], ["BP / match", avg(T.tov, tr.length)], ["Fautes / match", avg(T.fouls, tr.length)]]
             .map(([l, v]) => h("div", { class: "kpi" }, h("b", {}, v), h("span", {}, l)))),
         h("div", { class: "chips filter" }, Object.entries(METRICS).map(([k, m]) => h("button", { class: "chip" + (state.metric === k ? " on" : ""), onclick: () => { state.metric = k; rerender(); } }, m[0]))),
         chart(rows, state.metric),
         h("div", { class: "tbl" }, h("table", { class: "stats" },
-          h("thead", {}, h("tr", {}, ["Match", "Rés.", "Min", "Pts", "Tirs", "3 pts", "LF", "F"].map((x, i) => h("th", { class: i > 1 ? "r" : "" }, x)))),
+          h("thead", {}, h("tr", {}, ["Match", "Rés.", "Min", "Pts", "Tirs", "3 pts", "LF", "Reb", "BP", "F"].map((x, i) => h("th", { class: i > 1 ? "r" : "" }, x)))),
           h("tbody", {}, rows.slice().reverse().map(r => h("tr", { class: "click", onclick: () => U().setView({ name: "match", id: r.e.id }) },
             h("td", {}, fd(r.e.starts_at) + " · " + (r.e.opponent || "?")), h("td", {}, resChip(r.e)), h("td", { class: "r" }, r.min != null ? mmss(r.min) : "—"),
-            h("td", { class: "r strong" }, r.tracked ? r.s.pts : "—"), h("td", { class: "r" }, r.tracked ? ratio(r.s.fgm, r.s.fga) : "—"), h("td", { class: "r" }, r.tracked ? ratio(r.s.tpm, r.s.tpa) : "—"), h("td", { class: "r" }, r.tracked ? ratio(r.s.ftm, r.s.fta) : "—"), h("td", { class: "r" + (r.tracked && r.s.fouls >= 4 ? " bad" : "") }, r.tracked ? r.s.fouls : "—")))))),
+            h("td", { class: "r strong" }, r.tracked ? r.s.pts : "—"), h("td", { class: "r" }, r.tracked ? ratio(r.s.fgm, r.s.fga) : "—"), h("td", { class: "r" }, r.tracked ? ratio(r.s.tpm, r.s.tpa) : "—"), h("td", { class: "r" }, r.tracked ? ratio(r.s.ftm, r.s.fta) : "—"), h("td", { class: "r" }, r.tracked ? r.s.reb : "—"), h("td", { class: "r" }, r.tracked ? r.s.tov : "—"), h("td", { class: "r" + (r.tracked && r.s.fouls >= 4 ? " bad" : "") }, r.tracked ? r.s.fouls : "—")))))),
         h("p", { class: "sub" }, "Un « — » veut dire que ce match n'a pas été suivi sur l'écran terrain. Touche une ligne pour ouvrir le match.")),
     ];
   }
@@ -116,8 +116,8 @@
     if (!rows.length) return null;
     const fd = iso => new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", timeZone: "Europe/Paris" }).format(new Date(iso));
     return h("section", { class: "psec" }, h("h4", {}, "Ses matchs"), h("table", { class: "ptable" },
-      h("thead", {}, h("tr", {}, ["Match", "Min", "Pts", "Tirs", "3 pts", "LF", "F"].map(x => h("th", {}, x)))),
-      h("tbody", {}, rows.map(r => h("tr", {}, h("td", {}, fd(r.e.starts_at) + " · " + (r.e.opponent || "?")), h("td", {}, r.min != null ? mmss(r.min) : "—"), h("td", {}, r.tracked ? r.s.pts : "—"), h("td", {}, r.tracked ? ratio(r.s.fgm, r.s.fga) : "—"), h("td", {}, r.tracked ? ratio(r.s.tpm, r.s.tpa) : "—"), h("td", {}, r.tracked ? ratio(r.s.ftm, r.s.fta) : "—"), h("td", {}, r.tracked ? r.s.fouls : "—"))))));
+      h("thead", {}, h("tr", {}, ["Match", "Min", "Pts", "Tirs", "3 pts", "LF", "Reb", "BP", "F"].map(x => h("th", {}, x)))),
+      h("tbody", {}, rows.map(r => h("tr", {}, h("td", {}, fd(r.e.starts_at) + " · " + (r.e.opponent || "?")), h("td", {}, r.min != null ? mmss(r.min) : "—"), h("td", {}, r.tracked ? r.s.pts : "—"), h("td", {}, r.tracked ? ratio(r.s.fgm, r.s.fga) : "—"), h("td", {}, r.tracked ? ratio(r.s.tpm, r.s.tpa) : "—"), h("td", {}, r.tracked ? ratio(r.s.ftm, r.s.fta) : "—"), h("td", {}, r.tracked ? r.s.reb : "—"), h("td", {}, r.tracked ? r.s.tov : "—"), h("td", {}, r.tracked ? r.s.fouls : "—"))))));
   }
 
   window.StatsUtil = { byPlayer, scoreOf, zero, add, pct, pctTxt, ratio, mmss, matchTable, forPlayer, playerSection, pdfBlock };

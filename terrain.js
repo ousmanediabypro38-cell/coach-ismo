@@ -44,6 +44,7 @@
   }
 
   const BTN = [["m3", "+3 réussi", "à 3 points", "ok"], ["x3", "3 raté", "à 3 points", "no"], ["m2", "+2 réussi", "à 2 points", "ok"], ["x2", "2 raté", "à 2 points", "no"], ["fm", "+1 réussi", "lancer franc", "ok"], ["fx", "LF raté", "lancer franc", "no"], ["foul", "Faute", "personnelle", "fl"]];
+  const BTN2 = [["reb", "Rebond", "rb"], ["to", "Balle perdue", "to"]];
 
   async function view(e, P, stints) {
     const Mc = M(), L = e.live, rerender = () => U().setView({ name: "match", id: e.id });
@@ -110,12 +111,13 @@
     // --- actions ---
     const selId = TS.court && court.includes(TS.court) ? TS.court : null, ss = selId ? (by[selId] || SU().zero()) : null;
     const act = h("section", { class: "tr-act" + (selId ? "" : " idle") },
-      selId ? h("div", { class: "tr-who" }, h("b", {}, (P[selId].jersey != null ? "#" + P[selId].jersey + " " : "") + nm(selId)), h("small", {}, Mc.fmt((tot[selId] || { tot: 0 }).tot) + " joué · " + ss.pts + " pts", h("br"), SU().ratio(ss.fgm, ss.fga) + " tirs · " + SU().ratio(ss.tpm, ss.tpa) + " à 3 pts · " + ss.fouls + " faute" + (ss.fouls > 1 ? "s" : "")))
+      selId ? h("div", { class: "tr-who" }, h("b", {}, (P[selId].jersey != null ? "#" + P[selId].jersey + " " : "") + nm(selId)), h("small", {}, Mc.fmt((tot[selId] || { tot: 0 }).tot) + " joué · " + ss.pts + " pts", h("br"), SU().ratio(ss.fgm, ss.fga) + " tirs · " + SU().ratio(ss.tpm, ss.tpa) + " à 3 pts · " + ss.fouls + " faute" + (ss.fouls > 1 ? "s" : "") + " · " + ss.reb + " reb · " + ss.tov + " BP"))
         : h("div", { class: "tr-who" }, h("b", {}, "Touche un joueur"), h("small", {}, "sur le terrain, pour noter un tir ou une faute")),
-      BTN.map(([k, l, s, c]) => h("button", { type: "button", class: "tk " + c, disabled: !selId, onclick: () => record(k, selId) }, l, h("small", {}, s))));
+      h("div", { class: "tr-keys" }, BTN.map(([k, l, s, c]) => h("button", { type: "button", class: "tk r1 " + c, disabled: !selId, onclick: () => record(k, selId) }, l, h("small", {}, s))),
+        BTN2.map(([k, l, c]) => h("button", { type: "button", class: "tk r2 " + c, disabled: !selId, onclick: () => record(k, selId) }, l))));
 
     const last = acts.slice().sort((a, b) => (b.ts_ms || 0) - (a.ts_ms || 0))[0];
-    const LAB = { m2: "+2", x2: "2 raté", m3: "+3", x3: "3 raté", fm: "+1 LF", fx: "LF raté", foul: "faute", o1: "+1 adv.", o2: "+2 adv.", o3: "+3 adv." };
+    const LAB = { m2: "+2", x2: "2 raté", m3: "+3", x3: "3 raté", fm: "+1 LF", fx: "LF raté", foul: "faute", reb: "rebond", to: "balle perdue", o1: "+1 adv.", o2: "+2 adv.", o3: "+3 adv." };
     const foot = h("div", { class: "tr-foot" },
       last ? h("button", { class: "ghost small", onclick: undoAction }, "Annuler : " + (last.player_id && P[last.player_id] ? nm(last.player_id) + " " : "") + LAB[last.kind]) : null,
       L.last ? h("button", { class: "ghost small", onclick: async () => { const cur = await fresh(); await Mc.undoLast(cur); TS.court = TS.bench = null; rerender(); } }, "Annuler le dernier changement") : null,

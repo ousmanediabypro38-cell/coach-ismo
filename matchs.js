@@ -122,7 +122,8 @@
 
   // ---- avant le match ----
   function setupView(e, players) {
-    const S = setup[e.id] || (setup[e.id] = { st: {}, per: 4, len: 10 });
+    let last = {}; try { last = JSON.parse(localStorage.getItem("ismo_len_" + e.team_season_id) || "{}"); } catch (x) {}
+    const S = setup[e.id] || (setup[e.id] = { st: {}, per: last.per || 4, len: last.len || 10 });
     const get = p => S.st[p.id] == null ? 1 : S.st[p.id];
     const rerender = () => U().setView({ name: "match", id: e.id });
     if (!players.length) return [U().empty("users", "Aucun joueur dans cette équipe", "Ajoute d'abord les joueurs dans l'onglet Équipes.", null)];
@@ -134,7 +135,7 @@
       const starters = players.filter(p => get(p) === 2).map(p => p.id);
       if (live && starters.length !== 5) { U().toast("Choisis exactement 5 joueurs de départ."); return; }
       const cur = await DB.get("events", e.id);
-      cur.nb_periods = S.per; cur.game_min = +len.value || S.len; cur.squad = players.filter(p => get(p) > 0).map(p => p.id);
+      cur.nb_periods = S.per; cur.game_min = +len.value || S.len; try { localStorage.setItem("ismo_len_" + e.team_season_id, JSON.stringify({ per: S.per, len: cur.game_min })); } catch (x) {} cur.squad = players.filter(p => get(p) > 0).map(p => p.id);
       cur.live = live ? { q: 1, qstart: null, court: starters, last: null } : null;
       await DB.save("events", cur); rerender();
     };

@@ -364,3 +364,8 @@ button.tok { display:block; flex-direction:column; height:auto; min-height:0; wi
 button.tok:hover { background:none; }
 .tok i, .tok b, .tok em { width:auto; }
 .tok i { width:6.4cqw; }
+
+.tr-keys { flex:1; min-width:0; display:grid; grid-template-columns:repeat(14,1fr); gap:8px; }
+.tr-keys .tk.r1 { grid-column:span 2; } .tr-keys .tk.r2 { grid-column:span 7; min-height:46px; flex-direction:row; gap:8px; font-size:1.1rem; }
+.tk.rb { background:#10263a; border-color:#2f6f9f; color:#7cc4f5; } .tk.to { background:#2a1d33; border-color:#7a4a92; color:#d6a0ef; }
+@media (max-width:900px) { .tr-keys { flex:1 1 100%; } .tr-keys .tk.r1 { grid-column:span 3; } .tr-keys .tk.r1:nth-child(7) { grid-column:span 5; } .tr-keys .tk.r2 { grid-column:span 7; } }

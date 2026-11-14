@@ -50,8 +50,16 @@
       syncState = "err";
       if (manual) toast("Synchronisation impossible : " + (e.message || e));
     }
-    await refreshSyncPill(); render();
+    await refreshSyncPill(); softRender();
   }
+  // Ne redessine pas la page pendant que tu écris : on attend que tu quittes le champ (sinon le texte saisi disparaît).
+  let pendingRender = false;
+  const typing = () => { const a = document.activeElement; return !!(a && a !== document.body && a.closest && a.closest("#app") && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && !/^(button|checkbox|radio|file|submit)$/.test(a.type || "")); };
+  function softRender() {
+    if (!typing()) { pendingRender = false; return render(); }
+    pendingRender = true;
+  }
+  document.addEventListener("focusout", () => { if (!pendingRender) return; setTimeout(() => { if (pendingRender && !typing()) { pendingRender = false; render(); } }, 400); });
   window.AppSync = doSync;
   function scheduleSync() { clearTimeout(syncTimer); syncTimer = setTimeout(() => doSync(false), 2000); refreshSyncPill(); }
   DB.onchange = scheduleSync;
