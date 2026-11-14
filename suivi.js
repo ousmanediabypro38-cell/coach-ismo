@@ -14,7 +14,7 @@
   // État des saisies hors de l'écran (l'appli se redessine à chaque synchronisation)
   const draft = {};                                   // observation en cours, par contexte
   const st = { filter: "all", nf: null, gf: { cycle: "", body: "" }, ef: null, lastCycle: "" };
-  const pdf = { profil: true, objectifs: true, bilan: false, nom: false, photo: true };
+  const pdf = { profil: true, objectifs: true, bilan: false, nom: false, photo: true, stats: true };
 
   async function rosterOf(tsId) {
     const [mem, pl] = await Promise.all([DB.live("memberships"), DB.live("players")]);
@@ -166,6 +166,7 @@
         } }, "Enregistrer"), h("button", { class: "small ghost", onclick: () => { st.ef = null; rerender(); } }, "Annuler")));
     }
 
+    const statsNodes = window.StatsUtil ? await StatsUtil.playerSection(p, v.tsId, rerender) : [];
     const photoIn = h("input", { type: "file", accept: "image/*", class: "hidden", onchange: async ev => {
       const f = ev.target.files[0]; if (!f) return; ev.target.value = "";
       try { const cur = await DB.get("players", p.id); cur.photo = await cropSquare(f); await DB.save("players", cur); rerender(); } catch (x) { U().toast("Cette photo n'est pas lisible."); }
@@ -197,6 +198,8 @@
         h("datalist", { id: "cycles" }, [...new Set(goals.map(g => g.cycle).filter(Boolean))].map(c => h("option", { value: c }))),
         h("div", { class: "goaladd" }, gcycle, gbody, h("button", { class: "small", onclick: addGoal }, Icon("plus", 16), "Ajouter")),
         h("p", { class: "sub" }, "Touche le statut d'un objectif pour le faire passer de « En cours » à « Atteint », puis « Abandonné ».")),
+
+      ...statsNodes,
 
       h("div", { class: "row" }, h("h3", {}, "Observations (" + obsAll.length + ")"),
         h("button", { class: "small ghost", onclick: () => { st.nf = { tone: "plus", body: "", date: K().todayKey() }; rerender(); } }, Icon("plus", 16), "Observation libre")),
@@ -233,6 +236,7 @@
     const cycles = [...new Set(gl.map(g => g.cycle || "Objectifs"))];
     const lastBilan = entries.filter(e => e.player_id === p.id && e.kind === "bilan").sort((a, b) => (b.entry_date || "").localeCompare(a.entry_date || ""))[0];
     const name = pdf.nom ? full(p) : p.first_name;
+    const statsBlock = window.StatsUtil ? await StatsUtil.pdfBlock(p, v.tsId) : null;
     const has = { profil: !!(p.role_note || p.strengths || p.to_improve), obj: gl.length, bil: !!(lastBilan && lastBilan.body) };
     const sec = (title, body) => h("div", { class: "psec" }, h("h3", {}, title), body);
     const para = t => h("p", { class: "ptext" }, t);
@@ -254,7 +258,7 @@
         h("h2", {}, "PDF à partager"),
         h("p", { class: "sub" }, "Une version propre à envoyer à la joueuse ou à ses parents. Tes observations + / − et le détail des entretiens n'y sont jamais."),
         h("section", { class: "card" }, h("div", { class: "pdfopts" },
-          chk("profil", "Profil (rôle, points forts, axes)", !has.profil), chk("objectifs", "Objectifs", !has.obj), chk("bilan", "Dernier bilan", !has.bil), chk("nom", "Inclure le nom de famille"), chk("photo", "Inclure la photo", !p.photo)),
+          chk("profil", "Profil (rôle, points forts, axes)", !has.profil), chk("objectifs", "Objectifs", !has.obj), chk("bilan", "Dernier bilan", !has.bil), chk("nom", "Inclure le nom de famille"), chk("photo", "Inclure la photo", !p.photo), chk("stats", "Ses statistiques de match", !statsBlock)),
           h("div", { class: "btns wrap" },
             h("button", { onclick: () => window.print() }, Icon("copy", 18), "Imprimer / Enregistrer en PDF"),
             h("button", { class: "ghost", onclick: async () => { try { await navigator.clipboard.writeText(lines.join("\n")); U().toast("Texte copié."); } catch (e) { U().toast("Copie impossible sur cet appareil."); } } }, "Copier en texte")))),
@@ -265,7 +269,8 @@
         pdf.objectifs && has.obj ? sec("Objectifs", cycles.map(c => h("div", {}, h("div", { class: "pcycle" }, c),
           h("ul", {}, gl.filter(g => (g.cycle || "Objectifs") === c).map(g => h("li", { class: g.status === "atteint" ? "ok" : "" }, g.body + (g.status === "atteint" ? " ✓" : "")))))) ) : null,
         pdf.bilan && has.bil ? sec(lastBilan.title || "Bilan", para(lastBilan.body)) : null,
-        !(pdf.profil && has.profil) && !(pdf.objectifs && has.obj) && !(pdf.bilan && has.bil) ? h("p", { class: "psub" }, "Rien à afficher : remplis le profil ou ajoute des objectifs sur la fiche.") : null,
+        pdf.stats && statsBlock ? statsBlock : null,
+        !(pdf.profil && has.profil) && !(pdf.objectifs && has.obj) && !(pdf.bilan && has.bil) && !(pdf.stats && statsBlock) ? h("p", { class: "psub" }, "Rien à afficher : remplis le profil ou ajoute des objectifs sur la fiche.") : null,
         h("footer", { class: "pfoot" }, "COACH ISMO · " + new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", day: "numeric", month: "long", year: "numeric" }).format(new Date()))),
     ];
   }

@@ -20,6 +20,9 @@
   const sel = { ev: null, out: new Set(), inn: new Set() };
   const open = {};                   // fiches joueur ouvertes dans l'éditeur de passages
   let wake = null;
+  let mode = "terrain";                // écran en direct : « terrain » (tirs, fautes, changements) ou « liste » (changements seuls)
+  try { mode = localStorage.getItem("ismo_live_mode") === "liste" ? "liste" : "terrain"; } catch (x) {}
+  const setMode = m => { mode = m; try { localStorage.setItem("ismo_live_mode", m); } catch (x) {} };
 
   async function roster(e) {
     const [mem, pl] = await Promise.all([DB.live("memberships"), DB.live("players")]);
@@ -102,10 +105,11 @@
     const players = await roster(e), P = Object.fromEntries(players.map(p => [p.id, p]));
     const stints = await stintsOf(e.id);
     for (const s of stints) if (!P[s.player_id]) { const p = (await DB.get("players", s.player_id)); if (p) P[s.player_id] = { ...p, jersey: null }; }
-    if (e.live) return [...head, liveView(e, P, stints)];
+    if (e.live) return [...head, await (mode === "terrain" && window.TerrainUtil ? window.TerrainUtil.view(e, P, stints) : liveView(e, P, stints))];
     if (e.squad || stints.length || e.score_us != null) {
       releaseWake();
       const sv = summaryView(e, players, P, stints);
+      if (window.StatsUtil) { const acts = (await DB.live("match_actions")).filter(a => a.event_id === e.id), tbl = StatsUtil.matchTable(e, P, stints, acts); if (tbl) sv.splice(sv.length - 1, 0, tbl); }
       if (window.SuiviUtil) sv.splice(sv.length - 1, 0, h("section", { class: "card" }, h("h3", { class: "tight" }, "Observations des joueurs"),
         await window.SuiviUtil.obsForMatch(e, () => U().setView({ name: "match", id: e.id }))));
       return [...head, ...sv];
@@ -175,6 +179,7 @@
       h("section", { class: "card chrono" },
         h("div", {}, h("strong", { class: "qname" }, qn), h("div", { class: "sub" }, L.qstart ? "Chrono indicatif : il continue pendant les arrêts de jeu, les temps sont recalés à la fin de la période." : "Prêt. Lance la période au coup d'envoi.")),
         L.qstart ? clock : null,
+        window.TerrainUtil ? h("button", { class: "ghost small", onclick: () => { setMode("terrain"); rerender(); } }, Icon("ball", 16), "Vue terrain") : null,
         L.qstart
           ? h("button", { class: "ghost", onclick: async () => { if (!confirm("Terminer " + qn.toLowerCase() + " ?")) return; const cur = await DB.get("events", e.id); await endPeriod(cur); sel.out.clear(); sel.inn.clear(); rerender(); } }, Icon("check", 18), "Fin de la période")
           : h("button", { onclick: async () => { if (court.length !== 5 && !confirm("Il y a " + court.length + " joueurs sur le terrain. Lancer quand même ?")) return; const cur = await DB.get("events", e.id); await startPeriod(cur); rerender(); } }, Icon("clock", 18), "Coup d'envoi")),
@@ -330,5 +335,6 @@
   }
 
   window.MatchUtil = { resultChip, eventCard };
+  window.MatchCore = { substitute, startPeriod, endPeriod, finish, undoLast, totals, elapsed, periodName, fmt, pname, stintsOf, releaseWake, setMode, wakeOn: () => { try { if (!wake && navigator.wakeLock) navigator.wakeLock.request("screen").then(w => { wake = w; }).catch(() => {}); } catch (x) {} } };
   Object.assign(window.Views, { match: matchView, playtime: playtimeView });
 })();
