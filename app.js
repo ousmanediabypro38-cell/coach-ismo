@@ -42,24 +42,25 @@
     if (!uid) return;
     if (!navigator.onLine) { if (manual) toast("Hors ligne : les changements sont gardés sur la tablette."); return; }
     syncState = "run"; refreshSyncPill();
+    let changed = !!manual;
     try {
       const r = await Sync.run(sb, uid);
-      syncState = "idle";
+      syncState = "idle"; if (r && r.pulled) changed = true;
       if (manual && !r.skipped) toast("Synchronisation terminée (" + r.pulled + " reçus, " + r.pushed + " envoyés).");
     } catch (e) {
-      syncState = "err";
+      syncState = "err"; changed = false;
       if (manual) toast("Synchronisation impossible : " + (e.message || e));
     }
-    await refreshSyncPill(); softRender();
+    await refreshSyncPill(); if (changed) softRender();
   }
   // Ne redessine pas la page pendant que tu écris : on attend que tu quittes le champ (sinon le texte saisi disparaît).
   let pendingRender = false;
   const typing = () => { const a = document.activeElement; return !!(a && a !== document.body && a.closest && a.closest("#app") && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && !/^(button|checkbox|radio|file|submit)$/.test(a.type || "")); };
   function softRender() {
-    if (!typing()) { pendingRender = false; return render(); }
+    if (!typing()) { pendingRender = false; const y = window.scrollY; return render().then(() => window.scrollTo(0, y)); }
     pendingRender = true;
   }
-  document.addEventListener("focusout", () => { if (!pendingRender) return; setTimeout(() => { if (pendingRender && !typing()) { pendingRender = false; render(); } }, 400); });
+  document.addEventListener("focusout", () => { if (!pendingRender) return; setTimeout(() => { if (pendingRender && !typing()) { pendingRender = false; const y = window.scrollY; render().then(() => window.scrollTo(0, y)); } }, 400); });
   window.AppSync = doSync;
   function scheduleSync() { clearTimeout(syncTimer); syncTimer = setTimeout(() => doSync(false), 2000); refreshSyncPill(); }
   DB.onchange = scheduleSync;
