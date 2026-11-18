@@ -369,3 +369,13 @@ button.tok:hover { background:none; }
 .tr-keys .tk.r1 { grid-column:span 2; } .tr-keys .tk.r2 { grid-column:span 7; min-height:46px; flex-direction:row; gap:8px; font-size:1.1rem; }
 .tk.rb { background:#10263a; border-color:#2f6f9f; color:#7cc4f5; } .tk.to { background:#2a1d33; border-color:#7a4a92; color:#d6a0ef; }
 @media (max-width:900px) { .tr-keys { flex:1 1 100%; } .tr-keys .tk.r1 { grid-column:span 3; } .tr-keys .tk.r1:nth-child(7) { grid-column:span 5; } .tr-keys .tk.r2 { grid-column:span 7; } }
+/* ---- Routines d'avant-match ---- */
+.chklist { display:grid; gap:8px; margin-top:8px; }
+.chk { display:flex; align-items:center; gap:12px; width:100%; text-align:left; min-height:54px; padding:10px 14px; border-radius:12px; border:1px solid var(--line2); background:var(--s1); color:var(--text); font-size:1.05rem; cursor:pointer; }
+.chk i { flex:none; display:flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:8px; border:2px solid var(--line2); }
+.chk.on { background:var(--green-soft); border-color:var(--green); color:var(--mut); } .chk.on i { background:var(--green); border-color:var(--green); color:#03160c; } .chk.on span { text-decoration:line-through; }
+.chk span a { color:var(--green-hi); }
+.grid2 { display:grid; grid-template-columns:2fr 1fr; gap:12px; } @media (max-width:600px) { .grid2 { grid-template-columns:1fr; } }
+.chk { justify-content:flex-start; text-align:left; } .chk span { flex:1; } .chk small { display:block; color:var(--mut); font-size:.85rem; } .chklist.solo { margin:0; } .chklist.solo .chk { min-height:64px; font-weight:600; }
+.chk span .xn { display:block; } .chk span .xd { display:block; color:var(--mut); font-weight:400; font-size:.92rem; margin-top:2px; line-height:1.35; } .chk.on span .xd { color:var(--mut); }
+.chk:hover, .chk:active { background:var(--s2); color:var(--text); } .chk.on:hover { background:var(--green-soft); }

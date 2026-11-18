@@ -60,8 +60,12 @@ button:active { transform:scale(.98); }
     el("div", { class: "when" }, el("b", {}, fmtDate(poll.starts_at)), poll.venue ? poll.venue : "")]; }
 
   function pickPlayer() {
-    show(head(), el("h2", {}, "Qui es-tu ?"), el("div", { class: "grid" }, poll.players.map(p => el("button", { onclick: () => { me = p.id; LS.set(meKey, me); askStatus(); } }, label(p)))),
+    show(head(), el("h2", {}, "Qui es-tu ?"), el("div", { class: "grid" }, poll.players.map(p => el("button", { onclick: () => confirmMe(p) }, label(p)))),
       poll.players.length ? null : el("p", { class: "sub" }, "Aucun joueur dans la liste."));
+  }
+  function confirmMe(p) {
+    show(head(), el("h2", {}, "Tu es bien " + label(p) + " ?"), el("p", { class: "sub" }, "Réponds uniquement pour toi : ton coach voit qui a répondu."),
+      el("div", { class: "stack" }, el("button", { class: "yes", onclick: () => { me = p.id; LS.set(meKey, me); askStatus(); } }, "Oui, c'est moi"), el("button", { class: "ghost", onclick: pickPlayer }, "Non, retour")));
   }
   function askStatus(msg) {
     const p = poll.players.find(x => x.id === me); if (!p) { pickPlayer(); return; }

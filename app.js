@@ -42,24 +42,25 @@
     if (!uid) return;
     if (!navigator.onLine) { if (manual) toast("Hors ligne : les changements sont gardés sur la tablette."); return; }
     syncState = "run"; refreshSyncPill();
+    let changed = !!manual;
     try {
       const r = await Sync.run(sb, uid);
-      syncState = "idle";
+      syncState = "idle"; if (r && r.pulled) changed = true;
       if (manual && !r.skipped) toast("Synchronisation terminée (" + r.pulled + " reçus, " + r.pushed + " envoyés).");
     } catch (e) {
-      syncState = "err";
+      syncState = "err"; changed = false;
       if (manual) toast("Synchronisation impossible : " + (e.message || e));
     }
-    await refreshSyncPill(); softRender();
+    await refreshSyncPill(); if (changed) softRender();
   }
   // Ne redessine pas la page pendant que tu écris : on attend que tu quittes le champ (sinon le texte saisi disparaît).
   let pendingRender = false;
   const typing = () => { const a = document.activeElement; return !!(a && a !== document.body && a.closest && a.closest("#app") && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && !/^(button|checkbox|radio|file|submit)$/.test(a.type || "")); };
   function softRender() {
-    if (!typing()) { pendingRender = false; return render(); }
+    if (!typing()) { pendingRender = false; const y = window.scrollY; return render().then(() => window.scrollTo(0, y)); }
     pendingRender = true;
   }
-  document.addEventListener("focusout", () => { if (!pendingRender) return; setTimeout(() => { if (pendingRender && !typing()) { pendingRender = false; render(); } }, 400); });
+  document.addEventListener("focusout", () => { if (!pendingRender) return; setTimeout(() => { if (pendingRender && !typing()) { pendingRender = false; const y = window.scrollY; render().then(() => window.scrollTo(0, y)); } }, 400); });
   window.AppSync = doSync;
   function scheduleSync() { clearTimeout(syncTimer); syncTimer = setTimeout(() => doSync(false), 2000); refreshSyncPill(); }
   DB.onchange = scheduleSync;
@@ -85,14 +86,19 @@
   const fullName = p => [p.first_name, p.last_name].filter(Boolean).join(" ");
 
   // ---------- écrans ----------
-  const TAB = { accueil: "accueil", home: "teams", team: "teams", teamForm: "teams", playerForm: "teams", cal: "cal", event: "cal", eventForm: "cal", import: "cal", conflicts: "conflicts", carnet: "carnet", session: "carnet", sessionForm: "carnet", library: "carnet", exerciseForm: "carnet", importJson: "carnet", venues: "cal", venue: "cal", venueForm: "cal", oussou: "oussou", note: "oussou", noteForm: "oussou", match: "cal", playtime: "cal", player: "teams", playerPdf: "teams", playbook: "playbook", playEntry: "playbook", playForm: "playbook", playDiagram: "playbook", convoc: "cal", teamLogo: "teams", claudePrep: "accueil", formations: "formation", formation: "formation", formationForm: "formation", formationItem: "formation" };
+  const TAB = { accueil: "accueil", routines: "teams", routine: "teams", routineEdit: "teams", home: "teams", team: "teams", teamForm: "teams", playerForm: "teams", cal: "cal", event: "cal", eventForm: "cal", import: "cal", conflicts: "conflicts", carnet: "carnet", session: "carnet", sessionForm: "carnet", library: "carnet", exerciseForm: "carnet", importJson: "carnet", venues: "cal", venue: "cal", venueForm: "cal", oussou: "oussou", note: "oussou", noteForm: "oussou", match: "cal", playtime: "cal", player: "teams", playerPdf: "teams", playbook: "playbook", playEntry: "playbook", playForm: "playbook", playDiagram: "playbook", convoc: "cal", teamLogo: "teams", claudePrep: "accueil", formations: "formation", formation: "formation", formationForm: "formation", formationItem: "formation" };
   function empty(icon, title, text, action) { return h("div", { class: "empty" }, Icon(icon, 34), h("strong", {}, title), h("p", {}, text), action || null); }
   const app = () => $("app");
-  function setView(v) { view = v; render(); window.scrollTo(0, 0); }
+  // Même écran redessiné (bouton, présence, case cochée…) : on garde la position de défilement. Autre écran : retour en haut.
+  let lastKey = null;
+  const viewKey = v => [v.name, v.id, v.tsId, v.mId].join("|");
+  function setView(v) { view = v; return render(); }
 
   async function render() {
     if (!uid) return;
-    const root = app(); root.replaceChildren();
+    const root = app(), key = viewKey(view), keep = key === lastKey, y = window.scrollY;
+    if (keep) root.style.minHeight = root.offsetHeight + "px";
+    root.replaceChildren();
     if (view.name === "home") root.append(...(await homeView()).flat(Infinity).filter(x => x != null && x !== false));
     else if (view.name === "team") root.append(...(await teamView(view.id)).flat(Infinity).filter(x => x != null && x !== false));
     else if (view.name === "teamForm") root.append(teamForm());
@@ -100,6 +106,8 @@
     else if (window.Views && Views[view.name]) root.append(...[].concat(await Views[view.name](view)).flat(Infinity).filter(x => x != null && x !== false));
     document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.tab === (TAB[view.name] || "teams")));
     refreshSyncPill();
+    lastKey = key; root.style.minHeight = "";
+    window.scrollTo(0, keep ? y : 0);
   }
 
   async function conflictsBlock() {
@@ -172,6 +180,7 @@
       h("div", { class: "btns wrap" },
         h("button", { class: "small", onclick: () => setView({ name: "playerForm", tsId }) }, Icon("plus", 18), "Joueur"),
         h("button", { class: "small ghost", onclick: () => setView({ name: "teamLogo", id: tsId }) }, Icon("edit", 18), "Logo"),
+        h("button", { class: "small ghost", onclick: () => window.RoutineUtil && RoutineUtil.open(tsId) }, Icon("clipboard", 18), "Routines"),
         h("button", { class: "small ghost", onclick: () => { if (window.PlaybookState) window.PlaybookState.ts = tsId; setView({ name: "playbook" }); } }, Icon("court", 18), "Playbook"),
         h("button", { class: "small ghost", onclick: () => file.click() }, Icon("upload", 18), "Importer un CSV"), file,
         h("button", { class: "small ghost danger", onclick: async () => {
