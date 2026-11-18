@@ -42,25 +42,24 @@
     if (!uid) return;
     if (!navigator.onLine) { if (manual) toast("Hors ligne : les changements sont gardés sur la tablette."); return; }
     syncState = "run"; refreshSyncPill();
-    let changed = !!manual;
     try {
       const r = await Sync.run(sb, uid);
-      syncState = "idle"; if (r && r.pulled) changed = true;
+      syncState = "idle";
       if (manual && !r.skipped) toast("Synchronisation terminée (" + r.pulled + " reçus, " + r.pushed + " envoyés).");
     } catch (e) {
-      syncState = "err"; changed = false;
+      syncState = "err";
       if (manual) toast("Synchronisation impossible : " + (e.message || e));
     }
-    await refreshSyncPill(); if (changed) softRender();
+    await refreshSyncPill(); softRender();
   }
   // Ne redessine pas la page pendant que tu écris : on attend que tu quittes le champ (sinon le texte saisi disparaît).
   let pendingRender = false;
   const typing = () => { const a = document.activeElement; return !!(a && a !== document.body && a.closest && a.closest("#app") && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && !/^(button|checkbox|radio|file|submit)$/.test(a.type || "")); };
   function softRender() {
-    if (!typing()) { pendingRender = false; const y = window.scrollY; return render().then(() => window.scrollTo(0, y)); }
+    if (!typing()) { pendingRender = false; return render(); }
     pendingRender = true;
   }
-  document.addEventListener("focusout", () => { if (!pendingRender) return; setTimeout(() => { if (pendingRender && !typing()) { pendingRender = false; const y = window.scrollY; render().then(() => window.scrollTo(0, y)); } }, 400); });
+  document.addEventListener("focusout", () => { if (!pendingRender) return; setTimeout(() => { if (pendingRender && !typing()) { pendingRender = false; render(); } }, 400); });
   window.AppSync = doSync;
   function scheduleSync() { clearTimeout(syncTimer); syncTimer = setTimeout(() => doSync(false), 2000); refreshSyncPill(); }
   DB.onchange = scheduleSync;
@@ -86,7 +85,7 @@
   const fullName = p => [p.first_name, p.last_name].filter(Boolean).join(" ");
 
   // ---------- écrans ----------
-  const TAB = { accueil: "accueil", routines: "teams", routine: "teams", routineEdit: "teams", home: "teams", team: "teams", teamForm: "teams", playerForm: "teams", cal: "cal", event: "cal", eventForm: "cal", import: "cal", conflicts: "conflicts", carnet: "carnet", session: "carnet", sessionForm: "carnet", library: "carnet", exerciseForm: "carnet", importJson: "carnet", venues: "cal", venue: "cal", venueForm: "cal", oussou: "oussou", note: "oussou", noteForm: "oussou", match: "cal", playtime: "cal", player: "teams", playerPdf: "teams", playbook: "playbook", playEntry: "playbook", playForm: "playbook", playDiagram: "playbook", convoc: "cal", teamLogo: "teams", claudePrep: "accueil", formations: "formation", formation: "formation", formationForm: "formation", formationItem: "formation" };
+  const TAB = { accueil: "accueil", home: "teams", team: "teams", teamForm: "teams", playerForm: "teams", cal: "cal", event: "cal", eventForm: "cal", import: "cal", conflicts: "conflicts", carnet: "carnet", session: "carnet", sessionForm: "carnet", library: "carnet", exerciseForm: "carnet", importJson: "carnet", venues: "cal", venue: "cal", venueForm: "cal", oussou: "oussou", note: "oussou", noteForm: "oussou", match: "cal", playtime: "cal", player: "teams", playerPdf: "teams", playbook: "playbook", playEntry: "playbook", playForm: "playbook", playDiagram: "playbook", convoc: "cal", teamLogo: "teams", claudePrep: "accueil", formations: "formation", formation: "formation", formationForm: "formation", formationItem: "formation" };
   function empty(icon, title, text, action) { return h("div", { class: "empty" }, Icon(icon, 34), h("strong", {}, title), h("p", {}, text), action || null); }
   const app = () => $("app");
   function setView(v) { view = v; render(); window.scrollTo(0, 0); }
@@ -173,7 +172,6 @@
       h("div", { class: "btns wrap" },
         h("button", { class: "small", onclick: () => setView({ name: "playerForm", tsId }) }, Icon("plus", 18), "Joueur"),
         h("button", { class: "small ghost", onclick: () => setView({ name: "teamLogo", id: tsId }) }, Icon("edit", 18), "Logo"),
-        h("button", { class: "small ghost", onclick: () => window.RoutineUtil && RoutineUtil.open(tsId) }, Icon("clipboard", 18), "Routines"),
         h("button", { class: "small ghost", onclick: () => { if (window.PlaybookState) window.PlaybookState.ts = tsId; setView({ name: "playbook" }); } }, Icon("court", 18), "Playbook"),
         h("button", { class: "small ghost", onclick: () => file.click() }, Icon("upload", 18), "Importer un CSV"), file,
         h("button", { class: "small ghost danger", onclick: async () => {
