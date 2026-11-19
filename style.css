@@ -411,3 +411,9 @@ button.tok:hover { background:none; }
 @media (min-width:1100px) { .acc2 { display:grid; grid-template-columns:minmax(0,3fr) minmax(280px,2fr); gap:22px; align-items:start; } .accR .tiles { grid-template-columns:1fr 1fr; } }
 .accL > .card.hero { margin-top:0; }
 #syncbtn { display:flex; align-items:center; justify-content:center; gap:8px; }
+.bx input.bxn { width:54px; text-align:center; padding:8px 4px; } .bx input.bxm { width:70px; text-align:center; padding:8px 4px; } .bx td, .bx th { white-space:nowrap; }
+.warnline { color:var(--amber); }
+a.btnlink, a.item.btnitem { display:inline-flex; align-items:center; gap:8px; text-decoration:none; color:inherit; }
+a.btnlink { border:1px solid var(--line2); border-radius:10px; padding:8px 14px; font-weight:600; font-size:.9rem; }
+a.item.btnitem { display:flex; width:100%; }
+.bx input[type=checkbox] { accent-color:#23b574; width:24px; height:24px; }

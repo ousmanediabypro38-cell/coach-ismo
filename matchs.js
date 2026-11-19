@@ -105,11 +105,14 @@
     const players = await roster(e), P = Object.fromEntries(players.map(p => [p.id, p]));
     const stints = await stintsOf(e.id);
     for (const s of stints) if (!P[s.player_id]) { const p = (await DB.get("players", s.player_id)); if (p) P[s.player_id] = { ...p, jersey: null }; }
+    const boxes = (await DB.live("match_boxscores").catch(() => [])).filter(b => b.event_id === e.id);
+    for (const b of boxes) if (!P[b.player_id]) { const p = await DB.get("players", b.player_id); if (p) P[b.player_id] = { ...p, jersey: null }; }
+    if (!e.live) head.push(h("div", { class: "btns" }, h("button", { class: "ghost", onclick: () => U().setView({ name: "boxEntry", id: e.id }) }, Icon("clipboard", 18), boxes.length ? "Modifier les stats de la feuille" : "Saisir les stats après match (feuille)")));
     if (e.live) return [...head, await (mode === "terrain" && window.TerrainUtil ? window.TerrainUtil.view(e, P, stints) : liveView(e, P, stints))];
-    if (e.squad || stints.length || e.score_us != null) {
+    if (e.squad || stints.length || e.score_us != null || boxes.length) {
       releaseWake();
       const sv = summaryView(e, players, P, stints);
-      if (window.StatsUtil) { const acts = (await DB.live("match_actions")).filter(a => a.event_id === e.id), tbl = StatsUtil.matchTable(e, P, stints, acts); if (tbl) sv.splice(sv.length - 1, 0, tbl); }
+      if (window.StatsUtil) { const acts = (await DB.live("match_actions")).filter(a => a.event_id === e.id), tbl = StatsUtil.matchTable(e, P, stints, acts); if (tbl) sv.splice(sv.length - 1, 0, tbl); else if (boxes.length && StatsUtil.sheetTable) { const sh = StatsUtil.sheetTable(e, P, boxes); if (sh) sv.splice(sv.length - 1, 0, sh); } }
       if (window.SuiviUtil) sv.splice(sv.length - 1, 0, h("section", { class: "card" }, h("h3", { class: "tight" }, "Observations des joueurs"),
         await window.SuiviUtil.obsForMatch(e, () => U().setView({ name: "match", id: e.id }))));
       return [...head, ...sv];

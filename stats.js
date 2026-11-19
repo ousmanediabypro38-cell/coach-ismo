@@ -23,6 +23,11 @@
   const ratio = (m, a) => a ? m + "/" + a : "—";
   const mmss = s => Math.floor(s / 60) + ":" + String(Math.round(s % 60)).padStart(2, "0");
   const sum = (arr, f) => arr.reduce((t, x) => t + f(x), 0);
+  // Stats recopiées de la feuille de match (pas de tentatives, pas de rebonds ni de balles perdues).
+  const boxPts = b => 2 * ((b.p2i || 0) + (b.p2e || 0)) + 3 * (b.p3 || 0) + (b.ft || 0);
+  const boxOf = b => ({ pts: boxPts(b), fgm: (b.p2i || 0) + (b.p2e || 0) + (b.p3 || 0), p3: b.p3 || 0, ft: b.ft || 0, fouls: b.fouls || 0, starter: !!b.starter, seconds: b.seconds });
+  const ptsOf = r => r.tracked ? r.s.pts : r.box ? r.box.pts : null;
+  const foulsOf = r => r.tracked ? r.s.fouls : r.box ? r.box.fouls : null;
 
   // ---- tableau d'un match (après le match) ----
   function matchTable(e, P, stints, actions) {
@@ -42,25 +47,44 @@
         h("tfoot", {}, h("tr", {}, h("td", {}, "Équipe"), h("td", { class: "r" }, ""), h("td", { class: "r strong" }, T.pts), h("td", { class: "r" }, ratio(T.fgm, T.fga) + " · " + pctTxt(T.fgm, T.fga)), h("td", { class: "r" }, ratio(T.tpm, T.tpa)), h("td", { class: "r" }, ratio(T.ftm, T.fta)), h("td", { class: "r" }, T.reb), h("td", { class: "r" }, T.tov), h("td", { class: "r" }, T.fouls))))));
   }
 
+  // ---- tableau d'un match recopié de la feuille ----
+  function sheetTable(e, P, boxes) {
+    const rows = boxes.filter(b => P[b.player_id]).map(b => ({ b, p: P[b.player_id], x: boxOf(b) })).sort((a, c) => c.x.pts - a.x.pts || (c.b.seconds || 0) - (a.b.seconds || 0));
+    if (!rows.length) return null;
+    const T = rows.reduce((t, r) => { t.pts += r.x.pts; t.fgm += r.x.fgm; t.p3 += r.x.p3; t.ft += r.x.ft; t.fouls += r.x.fouls; t.sec += r.b.seconds || 0; return t; }, { pts: 0, fgm: 0, p3: 0, ft: 0, fouls: 0, sec: 0 });
+    const nm = p => p.first_name + (p.last_name ? " " + p.last_name.charAt(0) + "." : "");
+    const edit = h("button", { class: "small ghost", onclick: () => U().setView({ name: "boxEntry", id: e.id }) }, Icon("edit", 16), "Modifier la saisie");
+    return h("section", { class: "card" }, h("div", { class: "row" }, h("h3", { class: "tight" }, "Statistiques (feuille de match)"), edit),
+      h("p", { class: "sub" }, "Recopiées de la feuille de match officielle : seuls les tirs réussis sont connus."),
+      h("div", { class: "tbl" }, h("table", { class: "stats" },
+        h("thead", {}, h("tr", {}, ["Joueur", "Min", "Pts", "Tirs réuss.", "3 pts", "LF", "Fautes"].map((x, i) => h("th", { class: i ? "r" : "" }, x)))),
+        h("tbody", {}, rows.map(r => h("tr", {}, h("td", {}, (r.b.starter ? "● " : "") + (r.p.jersey != null ? "#" + r.p.jersey + " " : "") + nm(r.p)), h("td", { class: "r" }, r.b.seconds != null ? mmss(r.b.seconds) : "—"), h("td", { class: "r strong" }, r.x.pts), h("td", { class: "r" }, r.x.fgm), h("td", { class: "r" }, r.x.p3), h("td", { class: "r" }, r.x.ft), h("td", { class: "r" + (r.x.fouls >= 4 ? " bad" : "") }, r.x.fouls)))),
+        h("tfoot", {}, h("tr", {}, h("td", {}, "Équipe"), h("td", { class: "r" }, ""), h("td", { class: "r strong" }, T.pts), h("td", { class: "r" }, T.fgm), h("td", { class: "r" }, T.p3), h("td", { class: "r" }, T.ft), h("td", { class: "r" }, T.fouls))))),
+      h("p", { class: "sub" }, "● = 5 de départ."));
+  }
+
   // ---- données d'un joueur, match par match ----
   async function forPlayer(pid, tsId) {
-    const [events, av, stints, actions] = await Promise.all([DB.live("events"), DB.live("match_availability"), DB.live("match_stints"), DB.live("match_actions")]);
+    const [events, av, stints, actions, boxes] = await Promise.all([DB.live("events"), DB.live("match_availability"), DB.live("match_stints"), DB.live("match_actions"), DB.live("match_boxscores").catch(() => [])]);
     const now = Date.now(), rows = [];
     for (const e of events.filter(x => x.team_season_id === tsId && x.kind === "match" && x.status !== "annule").sort((a, b) => a.starts_at.localeCompare(b.starts_at))) {
       const a = av.find(x => x.event_id === e.id && x.player_id === pid && x.convoked);
       const sts = stints.filter(s => s.event_id === e.id && s.player_id === pid), acts = actions.filter(x => x.event_id === e.id && x.player_id === pid);
       const inSquad = (e.squad || []).includes(pid);
-      if (!(a || sts.length || acts.length || inSquad)) continue;
+      const bx = boxes.find(x => x.event_id === e.id && x.player_id === pid);
+      if (!(a || sts.length || acts.length || inSquad || bx)) continue;
       if (new Date(e.starts_at).getTime() > now && !sts.length && !acts.length) continue;
       const evAct = actions.filter(x => x.event_id === e.id);
       const s = zero(); acts.forEach(x => add(s, x.kind));
-      rows.push({ e, min: sts.some(x => x.out_s != null) ? sum(sts.filter(x => x.out_s != null), x => x.out_s - x.in_s) : null, s, tracked: evAct.length > 0 });
+      const liveMin = sts.some(x => x.out_s != null) ? sum(sts.filter(x => x.out_s != null), x => x.out_s - x.in_s) : null;
+      const useBox = bx && !acts.length;
+      rows.push({ e, min: liveMin != null ? liveMin : (useBox && bx.seconds != null ? bx.seconds : null), s, tracked: evAct.length > 0, box: useBox ? boxOf(bx) : null });
     }
     return rows;
   }
-  const METRICS = { pts: ["Points", r => r.tracked ? r.s.pts : null, v => String(v)], min: ["Minutes", r => r.min != null ? r.min / 60 : null, v => Math.round(v) + " min"],
+  const METRICS = { pts: ["Points", r => ptsOf(r), v => String(v)], min: ["Minutes", r => r.min != null ? r.min / 60 : null, v => Math.round(v) + " min"],
     fg: ["Tirs %", r => r.tracked && r.s.fga ? pct(r.s.fgm, r.s.fga) : null, v => v + " %"], tp: ["3 pts %", r => r.tracked && r.s.tpa ? pct(r.s.tpm, r.s.tpa) : null, v => v + " %"],
-    ft: ["LF %", r => r.tracked && r.s.fta ? pct(r.s.ftm, r.s.fta) : null, v => v + " %"], reb: ["Rebonds", r => r.tracked ? r.s.reb : null, v => String(v)], tov: ["Balles perdues", r => r.tracked ? r.s.tov : null, v => String(v)], fouls: ["Fautes", r => r.tracked ? r.s.fouls : null, v => String(v)] };
+    ft: ["LF %", r => r.tracked && r.s.fta ? pct(r.s.ftm, r.s.fta) : null, v => v + " %"], reb: ["Rebonds", r => r.tracked ? r.s.reb : null, v => String(v)], tov: ["Balles perdues", r => r.tracked ? r.s.tov : null, v => String(v)], fouls: ["Fautes", r => foulsOf(r), v => String(v)] };
   const state = { metric: "pts" };
 
   function chart(rows, key) {
@@ -97,7 +121,7 @@
       h("h3", {}, "Matchs et statistiques (" + rows.length + ")"),
       h("section", { class: "card" },
         h("div", { class: "kpis" },
-          [["Matchs", rows.length], ["Min / match", mins.length ? mmss(sum(mins, r => r.min) / mins.length) : "—"], ["Pts / match", avg(T.pts, tr.length)], ["Tirs", pctTxt(T.fgm, T.fga)], ["3 pts", pctTxt(T.tpm, T.tpa)], ["LF", pctTxt(T.ftm, T.fta)], ["Reb / match", avg(T.reb, tr.length)], ["BP / match", avg(T.tov, tr.length)], ["Fautes / match", avg(T.fouls, tr.length)]]
+          [["Matchs", rows.length], ["Min / match", mins.length ? mmss(sum(mins, r => r.min) / mins.length) : "—"], ["Pts / match", avg(sum(rows.filter(r => ptsOf(r) != null), r => ptsOf(r)), rows.filter(r => ptsOf(r) != null).length)], ["Tirs", pctTxt(T.fgm, T.fga)], ["3 pts", pctTxt(T.tpm, T.tpa)], ["LF", pctTxt(T.ftm, T.fta)], ["Reb / match", avg(T.reb, tr.length)], ["BP / match", avg(T.tov, tr.length)], ["Fautes / match", avg(sum(rows.filter(r => foulsOf(r) != null), r => foulsOf(r)), rows.filter(r => foulsOf(r) != null).length)]]
             .map(([l, v]) => h("div", { class: "kpi" }, h("b", {}, v), h("span", {}, l)))),
         h("div", { class: "chips filter" }, Object.entries(METRICS).map(([k, m]) => h("button", { class: "chip" + (state.metric === k ? " on" : ""), onclick: () => { state.metric = k; rerender(); } }, m[0]))),
         chart(rows, state.metric),
@@ -105,8 +129,8 @@
           h("thead", {}, h("tr", {}, ["Match", "Rés.", "Min", "Pts", "Tirs", "3 pts", "LF", "Reb", "BP", "F"].map((x, i) => h("th", { class: i > 1 ? "r" : "" }, x)))),
           h("tbody", {}, rows.slice().reverse().map(r => h("tr", { class: "click", onclick: () => U().setView({ name: "match", id: r.e.id }) },
             h("td", {}, fd(r.e.starts_at) + " · " + (r.e.opponent || "?")), h("td", {}, resChip(r.e)), h("td", { class: "r" }, r.min != null ? mmss(r.min) : "—"),
-            h("td", { class: "r strong" }, r.tracked ? r.s.pts : "—"), h("td", { class: "r" }, r.tracked ? ratio(r.s.fgm, r.s.fga) : "—"), h("td", { class: "r" }, r.tracked ? ratio(r.s.tpm, r.s.tpa) : "—"), h("td", { class: "r" }, r.tracked ? ratio(r.s.ftm, r.s.fta) : "—"), h("td", { class: "r" }, r.tracked ? r.s.reb : "—"), h("td", { class: "r" }, r.tracked ? r.s.tov : "—"), h("td", { class: "r" + (r.tracked && r.s.fouls >= 4 ? " bad" : "") }, r.tracked ? r.s.fouls : "—")))))),
-        h("p", { class: "sub" }, "Un « — » veut dire que ce match n'a pas été suivi sur l'écran terrain. Touche une ligne pour ouvrir le match.")),
+            h("td", { class: "r strong" }, ptsOf(r) ?? "—"), h("td", { class: "r" }, r.tracked ? ratio(r.s.fgm, r.s.fga) : r.box ? r.box.fgm + " réuss." : "—"), h("td", { class: "r" }, r.tracked ? ratio(r.s.tpm, r.s.tpa) : r.box ? r.box.p3 + " réuss." : "—"), h("td", { class: "r" }, r.tracked ? ratio(r.s.ftm, r.s.fta) : r.box ? r.box.ft + " réuss." : "—"), h("td", { class: "r" }, r.tracked ? r.s.reb : "—"), h("td", { class: "r" }, r.tracked ? r.s.tov : "—"), h("td", { class: "r" + (foulsOf(r) >= 4 ? " bad" : "") }, foulsOf(r) ?? "—")))))),
+        h("p", { class: "sub" }, "Un « — » veut dire qu'aucune stat n'a été saisie pour ce match (terrain ou feuille de match). « réuss. » : seuls les tirs réussis sont connus (stats recopiées de la feuille). Touche une ligne pour ouvrir le match.")),
     ];
   }
 
@@ -120,5 +144,5 @@
       h("tbody", {}, rows.map(r => h("tr", {}, h("td", {}, fd(r.e.starts_at) + " · " + (r.e.opponent || "?")), h("td", {}, r.min != null ? mmss(r.min) : "—"), h("td", {}, r.tracked ? r.s.pts : "—"), h("td", {}, r.tracked ? ratio(r.s.fgm, r.s.fga) : "—"), h("td", {}, r.tracked ? ratio(r.s.tpm, r.s.tpa) : "—"), h("td", {}, r.tracked ? ratio(r.s.ftm, r.s.fta) : "—"), h("td", {}, r.tracked ? r.s.reb : "—"), h("td", {}, r.tracked ? r.s.tov : "—"), h("td", {}, r.tracked ? r.s.fouls : "—"))))));
   }
 
-  window.StatsUtil = { byPlayer, scoreOf, zero, add, pct, pctTxt, ratio, mmss, matchTable, forPlayer, playerSection, pdfBlock };
+  window.StatsUtil = { byPlayer, scoreOf, zero, add, pct, pctTxt, ratio, mmss, matchTable, sheetTable, boxOf, boxPts, forPlayer, playerSection, pdfBlock };
 })();

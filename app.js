@@ -108,7 +108,7 @@
   const fullName = p => [p.first_name, p.last_name].filter(Boolean).join(" ");
 
   // ---------- écrans ----------
-  const TAB = { accueil: "accueil", routines: "teams", missions: "cal", missionBank: "teams", missionSuivi: "teams", routine: "teams", routineEdit: "teams", home: "teams", team: "teams", teamForm: "teams", playerForm: "teams", cal: "cal", event: "cal", eventForm: "cal", import: "cal", conflicts: "conflicts", carnet: "carnet", session: "carnet", sessionForm: "carnet", library: "carnet", exerciseForm: "carnet", importJson: "carnet", venues: "cal", venue: "cal", venueForm: "cal", oussou: "oussou", note: "oussou", noteForm: "oussou", match: "cal", playtime: "cal", player: "teams", playerPdf: "teams", playbook: "playbook", playEntry: "playbook", playForm: "playbook", playDiagram: "playbook", convoc: "cal", teamLogo: "teams", claudePrep: "accueil", formations: "formation", formation: "formation", formationForm: "formation", formationItem: "formation" };
+  const TAB = { accueil: "accueil", routines: "teams", missions: "cal", boxEntry: "cal", missionBank: "teams", missionSuivi: "teams", routine: "teams", routineEdit: "teams", home: "teams", team: "teams", teamForm: "teams", playerForm: "teams", cal: "cal", event: "cal", eventForm: "cal", import: "cal", conflicts: "conflicts", carnet: "carnet", session: "carnet", sessionForm: "carnet", library: "carnet", exerciseForm: "carnet", importJson: "carnet", venues: "cal", venue: "cal", venueForm: "cal", oussou: "oussou", note: "oussou", noteForm: "oussou", match: "cal", playtime: "cal", player: "teams", playerPdf: "teams", playbook: "playbook", playEntry: "playbook", playForm: "playbook", playDiagram: "playbook", convoc: "cal", teamLogo: "teams", claudePrep: "accueil", formations: "formation", formation: "formation", formationForm: "formation", formationItem: "formation" };
   function empty(icon, title, text, action) { return h("div", { class: "empty" }, Icon(icon, 34), h("strong", {}, title), h("p", {}, text), action || null); }
   const app = () => $("app");
   // Même écran redessiné (bouton, présence, case cochée…) : on garde la position de défilement. Autre écran : retour en haut.
@@ -210,6 +210,23 @@
       h("button", { type: "button", class: "ghost", onclick: () => setView({ name: "home" }) }, "Annuler"));
   }
 
+  const safeUrl = u => { try { const x = new URL(String(u).trim()); return /^https?:$/.test(x.protocol) ? x.href : null; } catch (e) { return null; } };
+  function standingsCard(ts) {
+    const rank = h("input", { type: "text", placeholder: "Ex. 4e · 6 V – 2 D", value: ts.standings_rank || "" });
+    const url = h("input", { type: "url", placeholder: "https://… (page classement de ta poule)", value: ts.standings_url || "" });
+    const go = safeUrl(ts.standings_url);
+    return h("section", { class: "card" }, h("h3", { class: "tight" }, "Classement de la poule"),
+      h("p", { class: "sub" }, ts.standings_rank ? ts.standings_rank + (ts.standings_at ? " · mis à jour le " + new Date(ts.standings_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) : "") : "Colle le lien de la page classement de ta poule et note ta position : elle s'affiche sur l'accueil."),
+      field("Position et bilan", rank), field("Lien de la page classement", url),
+      h("div", { class: "btns wrap" },
+        h("button", { class: "small", onclick: async () => {
+          const cur = await DB.get("team_seasons", ts.id), u = url.value.trim();
+          if (u && !safeUrl(u)) { toast("Ce lien ne semble pas valide (il doit commencer par https://)."); return; }
+          cur.standings_rank = rank.value.trim() || null; cur.standings_url = u ? safeUrl(u) : null; cur.standings_at = new Date().toISOString();
+          await DB.save("team_seasons", cur); toast("Classement enregistré."); render();
+        } }, Icon("check", 18), "Enregistrer"),
+        go ? h("a", { class: "btnlink", href: go, target: "_blank", rel: "noopener noreferrer" }, "Ouvrir le classement") : null));
+  }
   async function teamView(tsId) {
     const ts = await DB.get("team_seasons", tsId);
     if (!ts || ts.deleted_at) { view = { name: "home" }; return homeView(); }
@@ -234,6 +251,7 @@
           if (!confirm("Supprimer cette équipe pour cette saison ? (les joueurs sont gardés)")) return;
           await DB.remove("team_seasons", ts); setView({ name: "home" });
         } }, "Supprimer l'équipe")),
+      standingsCard(ts),
       h("h3", {}, "Effectif (" + roster.length + ")"),
       roster.length ? roster.map(({ m, p }) => h("button", { class: "item btnitem", onclick: () => setView({ name: "player", tsId, mId: m.id }) },
         window.SuiviUtil ? SuiviUtil.avatar(p, "sm") : null,

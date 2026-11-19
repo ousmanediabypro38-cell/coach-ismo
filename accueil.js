@@ -60,6 +60,10 @@
       h("div", { class: "acc2" }, h("div", { class: "accL" },
       hero,
       window.Backup ? await Backup.banner(rerender) : null,
+      teams.some(x => x.ts.standings_rank || x.ts.standings_url) ? [h("h3", {}, "Classements"), h("section", { class: "card" }, teams.filter(x => x.ts.standings_rank || x.ts.standings_url).map(x => {
+        const href = (() => { try { const u = new URL(x.ts.standings_url); return /^https?:$/.test(u.protocol) ? u.href : null; } catch (e) { return null; } })();
+        return h(href ? "a" : "button", Object.assign({ class: "item btnitem" }, href ? { href, target: "_blank", rel: "noopener noreferrer" } : { onclick: () => U().setView({ name: "team", id: x.ts.id }) }),
+          h("div", { style: "flex:1;min-width:0" }, h("strong", {}, x.team.name), h("div", { class: "sub" }, x.ts.standings_rank || "Voir le classement")), href ? h("span", { class: "pill" }, "Ouvrir") : null); }))] : null,
       h("h3", {}, "Cette semaine"),
       byDay.length ? h("section", { class: "card" }, byDay.map(g => h("div", { class: "agday" }, h("div", { class: "aglbl" }, dayLbl(g.k)),
         g.list.map(it => h("button", { class: "item btnitem", onclick: () => U().setView(it.go) },
@@ -81,7 +85,7 @@
       ),
       ),
       window.Backup ? await Backup.card(rerender) : null,
-      h("p", { class: "sub", style: "text-align:center;margin-top:18px" }, "COACH ISMO · version 33"),
+      h("p", { class: "sub", style: "text-align:center;margin-top:18px" }, "COACH ISMO · version 34"),
     ];
   }
   Object.assign(window.Views, { accueil: view });
