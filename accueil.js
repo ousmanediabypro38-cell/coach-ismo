@@ -57,13 +57,18 @@
     return [
       h("div", { class: "greet" }, h("h1", {}, hello), h("p", { class: "sub" }, dateTxt)),
       confl.length ? h("button", { class: "card warnbox btnitem", onclick: () => U().setView({ name: "conflicts" }) }, h("strong", {}, confl.length + " modification" + (confl.length > 1 ? "s" : "") + " en double à trancher"), h("span", { class: "sub" }, "Ouvrir les conflits")) : null,
-      window.Backup ? await Backup.banner(rerender) : null,
+      h("div", { class: "acc2" }, h("div", { class: "accL" },
       hero,
+      window.Backup ? await Backup.banner(rerender) : null,
       h("h3", {}, "Cette semaine"),
       byDay.length ? h("section", { class: "card" }, byDay.map(g => h("div", { class: "agday" }, h("div", { class: "aglbl" }, dayLbl(g.k)),
         g.list.map(it => h("button", { class: "item btnitem", onclick: () => U().setView(it.go) },
           h("div", { class: "evtime" }, K().hm(it.t)), h("div", { style: "flex:1;min-width:0" }, h("strong", {}, it.label), h("div", { class: "sub" }, it.kind)), it.match ? h("span", { class: "pill ok" }, "Match") : null))))) 
         : h("p", { class: "sub" }, "Rien de prévu dans les 7 prochains jours."),
+      ), h("div", { class: "accR" },
+      results.length ? [h("h3", {}, "Derniers résultats"), h("section", { class: "card" }, results.map(e => h("button", { class: "item btnitem", onclick: () => U().setView({ name: "match", id: e.id }) },
+        h("div", { style: "flex:1;min-width:0" }, h("strong", {}, (T[e.team_season_id] || "") + " — " + (e.opponent || "")), h("div", { class: "sub" }, K().cap(K().dayFmt.format(new Date(e.starts_at))))),
+        window.MatchUtil ? MatchUtil.resultChip(e) : null)))] : null,
       h("h3", {}, "Raccourcis"),
       h("div", { class: "tiles" },
         tile("clipboard", "Nouvelle séance", "Préparer un entraînement", { name: "sessionForm" }),
@@ -73,11 +78,10 @@
         tile("clipboard", "Exercices", "Bibliothèque", { name: "library" }),
         tile("pin", "Lieux et trajets", "Salles, durées", { name: "venues" }),
         tile("copy", "Préparer pour Claude", "Texte prêt à coller", { name: "claudePrep" })),
-      results.length ? [h("h3", {}, "Derniers résultats"), h("section", { class: "card" }, results.map(e => h("button", { class: "item btnitem", onclick: () => U().setView({ name: "match", id: e.id }) },
-        h("div", { style: "flex:1;min-width:0" }, h("strong", {}, (T[e.team_season_id] || "") + " — " + (e.opponent || "")), h("div", { class: "sub" }, K().cap(K().dayFmt.format(new Date(e.starts_at))))),
-        window.MatchUtil ? MatchUtil.resultChip(e) : null)))] : null,
+      ),
+      ),
       window.Backup ? await Backup.card(rerender) : null,
-      h("p", { class: "sub", style: "text-align:center;margin-top:18px" }, "COACH ISMO · version 32"),
+      h("p", { class: "sub", style: "text-align:center;margin-top:18px" }, "COACH ISMO · version 33"),
     ];
   }
   Object.assign(window.Views, { accueil: view });

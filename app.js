@@ -31,8 +31,9 @@
     const n = await DB.countDirty(), c = (await DB.conflicts()).length;
     const el = $("syncpill");
     let txt = "synchronisé", cls = "pill ok";
+    try { const ls = await DB.getMeta("last_sync"); if (ls) txt += " · " + new Date(ls).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }); } catch (e) {}
     if (syncState === "run") { txt = "synchronisation…"; cls = "pill"; }
-    else if (syncState === "err") { txt = "erreur de synchro"; cls = "pill bad"; }
+    else if (syncState === "err") { txt = "erreur · toucher pour réessayer"; cls = "pill bad"; }
     else if (c) { txt = c + " modif. en double"; cls = "pill bad"; }
     else if (n) { txt = n + " en attente"; cls = "pill warn"; }
     el.textContent = txt; el.className = cls;
@@ -48,8 +49,9 @@
       syncState = "idle"; if (r && r.pulled) changed = true;
       if (manual && !r.skipped) toast("Synchronisation terminée (" + r.pulled + " reçus, " + r.pushed + " envoyés).");
     } catch (e) {
-      syncState = "err"; changed = false;
+      const first = syncState !== "err"; syncState = "err"; changed = false;
       if (manual) toast("Synchronisation impossible : " + (e.message || e));
+      else if (first) toast("Synchronisation impossible pour l'instant. Tes changements restent sur la tablette.");
     }
     await refreshSyncPill(); if (changed) softRender();
   }
@@ -65,10 +67,30 @@
   function scheduleSync() { clearTimeout(syncTimer); syncTimer = setTimeout(() => doSync(false), 2000); refreshSyncPill(); }
   DB.onchange = scheduleSync;
 
-  function toast(msg) {
+  function toast(msg, action, ms) {
     const t = $("toast"); t.textContent = msg; t.classList.remove("hidden");
-    clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.add("hidden"), 4000);
+    if (action) { const b = document.createElement("button"); b.type = "button"; b.className = "toastbtn"; b.textContent = action.label;
+      b.addEventListener("click", () => { t.classList.add("hidden"); action.run(); }); t.append(b); }
+    clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.add("hidden"), ms || (action ? 8000 : 4000));
   }
+  // Annuler une suppression : toutes les suppressions faites dans la même seconde sont annulées ensemble.
+  (function () {
+    const orig = DB.remove.bind(DB); let batch = [], timer = null;
+    DB.remove = async function (name, row) {
+      const r = await orig(name, row);
+      if (name === "match_actions") return r;
+      batch.push([name, row.id]);
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        const b = batch; batch = [];
+        toast(b.length > 1 ? b.length + " éléments supprimés" : "Supprimé", { label: "Annuler", run: async () => {
+          for (const [n, id] of b) { const x = await DB.get(n, id); if (x) { x.deleted_at = null; await DB.save(n, x); } }
+          toast("Suppression annulée"); softRender();
+        } });
+      }, 350);
+      return r;
+    };
+  })();
 
   // ---------- données ----------
   async function loadTeams() {
@@ -92,7 +114,24 @@
   // Même écran redessiné (bouton, présence, case cochée…) : on garde la position de défilement. Autre écran : retour en haut.
   let lastKey = null;
   const viewKey = v => [v.name, v.id, v.tsId, v.mId].join("|");
-  function setView(v) { view = v; return render(); }
+  const stack = [], ROOTS = ["accueil", "home", "cal", "conflicts", "carnet", "playbook", "formations", "oussou"];
+  function setView(v, fromPop) {
+    if (!fromPop && view && viewKey(view) !== viewKey(v)) { stack.push(view); if (stack.length > 60) stack.shift(); try { history.pushState({ n: stack.length }, ""); } catch (e) {} }
+    view = v; return render();
+  }
+  window.addEventListener("popstate", () => {
+    const prev = stack.pop();
+    if (prev) { view = prev; render(); }
+    else if (view.name !== "accueil") { view = { name: "accueil" }; render(); try { history.pushState({ n: 0 }, ""); } catch (e) {} }
+  });
+  function goBack() { if (stack.length) history.back(); else setView({ name: "accueil" }); }
+  function backBar() {
+    let bar = $("backbar");
+    const need = !ROOTS.includes(view.name) && !document.querySelector("#app .back");
+    if (!need) { if (bar) bar.remove(); return; }
+    if (!bar) { bar = document.createElement("div"); bar.id = "backbar"; app().before(bar); }
+    bar.replaceChildren(h("button", { class: "small ghost back", onclick: goBack }, Icon("chevL", 18), stack.length ? "Retour" : "Accueil"));
+  }
 
   async function render() {
     if (!uid) return;
@@ -105,7 +144,7 @@
     else if (view.name === "playerForm") root.append(await playerForm(view.tsId, view.mId));
     else if (window.Views && Views[view.name]) root.append(...[].concat(await Views[view.name](view)).flat(Infinity).filter(x => x != null && x !== false));
     document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.tab === (TAB[view.name] || "teams")));
-    refreshSyncPill();
+    refreshSyncPill(); backBar();
     lastKey = key; root.style.minHeight = "";
     window.scrollTo(0, keep ? y : 0);
   }
@@ -127,14 +166,21 @@
 
   async function homeView() {
     const list = await loadTeams();
+    const [mem, evs] = await Promise.all([DB.live("memberships"), DB.live("events")]);
+    const nowIso = new Date().toISOString(), fr = new Intl.DateTimeFormat("fr-FR", { weekday: "short", day: "numeric", month: "short" });
+    const info = x => {
+      const n = mem.filter(m => m.team_season_id === x.ts.id).length;
+      const nx = evs.filter(e => e.team_season_id === x.ts.id && e.starts_at >= nowIso && e.status !== "annule").sort((a, b) => a.starts_at.localeCompare(b.starts_at))[0];
+      return n + " joueur" + (n > 1 ? "s" : "") + (nx ? " · prochain : " + fr.format(new Date(nx.starts_at)) + (nx.opponent ? " vs " + nx.opponent : "") : "");
+    };
     return [
       ...(await conflictsBlock()),
       h("div", { class: "row" }, h("h2", {}, "Mes équipes"),
         h("button", { onclick: () => setView({ name: "teamForm" }) }, Icon("plus", 18), "Nouvelle équipe")),
       list.length ? list.map(x => h("button", { class: "item btnitem", onclick: () => setView({ name: "team", id: x.ts.id }) },
         window.LogoUtil ? LogoUtil.img(LogoUtil.teamLogoSrc(x.team), "tlogo sm") : null,
-        h("div", { style: "flex:1" }, h("strong", {}, x.team.name), h("div", { class: "sub" }, [x.team.category, x.team.club, x.season.label].filter(Boolean).join(" · "))),
-        h("span", { class: "pill" }, "P" + (x.ts.priority || "?") + " · " + (x.ts.role || "")))
+        h("div", { style: "flex:1" }, h("strong", {}, x.team.name), h("div", { class: "sub" }, [x.team.category, x.team.club, x.season.label].filter(Boolean).join(" · ")), h("div", { class: "sub" }, info(x))),
+        h("span", { class: "pill" }, "P" + (x.ts.priority || "?") + (x.ts.role ? " · " + x.ts.role : "")))
       
       ) : empty("users", "Aucune équipe pour le moment", "Crée ta première équipe pour y ajouter ses joueurs, ses rencontres et ses séances.",
         h("button", { onclick: () => setView({ name: "teamForm" }) }, Icon("plus", 18), "Créer une équipe")),
@@ -289,7 +335,7 @@
   const brand = document.querySelector(".side-top .brand");
   if (brand) { brand.setAttribute("role", "button"); brand.setAttribute("tabindex", "0"); brand.setAttribute("aria-label", "Retour à l'accueil"); brand.style.cursor = "pointer";
     brand.addEventListener("click", () => setView({ name: "accueil" })); brand.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setView({ name: "accueil" }); } }); }
-  $("syncpill").addEventListener("click", () => setView({ name: "home" }));
+  $("syncpill").addEventListener("click", () => doSync(true));
   $("syncbtn").addEventListener("click", () => doSync(true));
   $("logout").addEventListener("click", async () => {
     const n = await DB.countDirty();
@@ -303,8 +349,20 @@
   document.addEventListener("visibilitychange", () => { if (!document.hidden) doSync(false); });
 
   document.querySelectorAll("[data-icon]").forEach(e => e.replaceChildren(Icon(e.dataset.icon, e.closest(".nav") ? 22 : 18)));
-  window.UI = { h, field, setView, toast, loadTeams, defaultSeason, empty };
+  window.UI = { h, field, setView, toast, loadTeams, defaultSeason, empty, goBack };
   start();
-  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+  if ("serviceWorker" in navigator) {
+    const had = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (!had || document.getElementById("updbar")) return;
+      const b = h("div", { id: "updbar", role: "status" }, h("span", {}, "Nouvelle version prête."), h("button", { class: "small", onclick: () => location.reload() }, "Mettre à jour"), h("button", { class: "small ghost", "aria-label": "Plus tard", onclick: () => b.remove() }, "Plus tard"));
+      document.body.append(b);
+    });
+    navigator.serviceWorker.register("sw.js").then(reg => {
+      const chk = () => { try { reg.update(); } catch (e) {} };
+      document.addEventListener("visibilitychange", () => { if (!document.hidden) chk(); });
+      setInterval(chk, 30 * 60 * 1000);
+    }).catch(() => {});
+  }
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 })();

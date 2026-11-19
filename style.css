@@ -392,3 +392,22 @@ button.tok:hover { background:none; }
 .rblock > :not(summary) { margin-left:18px; margin-right:18px; } .rblock > :last-child { margin-bottom:18px; }
 .rbody .rh { margin:16px 0 6px; font:700 1.05rem var(--num); color:var(--green-hi); } .rl { margin:6px 0; padding-left:22px; display:grid; gap:6px; line-height:1.45; } .rp { margin:8px 0; line-height:1.5; }
 .rfig { margin:16px 0 0; } .rfig .dsvg { max-width:560px; } .rfig figcaption { display:grid; gap:2px; margin-top:6px; color:var(--mut); font-size:.92rem; } .rfig figcaption strong { color:var(--text); }
+
+/* v33 : navigation, annulation, mise à jour, recherche */
+#backbar { position:sticky; top:0; z-index:15; padding:8px 0 6px; background:linear-gradient(var(--bg,#080b09) 70%, transparent); }
+#backbar .back { display:inline-flex; align-items:center; gap:4px; }
+.toast { display:flex; align-items:center; gap:14px; }
+.toastbtn { background:transparent; border:0; color:var(--green-hi); font-weight:700; padding:6px 4px; min-height:0; cursor:pointer; }
+#updbar { position:fixed; left:50%; transform:translateX(-50%); bottom:84px; z-index:60; display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:center; background:var(--s3); border:1px solid var(--green); border-radius:12px; padding:10px 14px; max-width:92vw; box-shadow:0 10px 30px rgba(0,0,0,.5); }
+@media (min-width:901px) { #updbar { bottom:28px; } }
+#syncpill { cursor:pointer; }
+#searchbtn { padding:6px 8px; }
+#searchbox { position:fixed; inset:0; z-index:80; background:rgba(0,0,0,.6); display:flex; justify-content:center; align-items:flex-start; padding:7vh 12px 12px; }
+.srpanel { width:min(640px,100%); max-height:80vh; background:var(--s1); border:1px solid var(--line2); border-radius:16px; padding:14px; display:flex; flex-direction:column; gap:10px; overflow:hidden; }
+.srtop { display:flex; gap:8px; } .srtop input { flex:1; }
+.srlist { overflow-y:auto; display:flex; flex-direction:column; gap:2px; }
+.srg { font-size:.78rem; color:var(--mut); font-weight:600; padding:10px 4px 2px; }
+.acc2 { display:block; }
+@media (min-width:1100px) { .acc2 { display:grid; grid-template-columns:minmax(0,3fr) minmax(280px,2fr); gap:22px; align-items:start; } .accR .tiles { grid-template-columns:1fr 1fr; } }
+.accL > .card.hero { margin-top:0; }
+#syncbtn { display:flex; align-items:center; justify-content:center; gap:8px; }
