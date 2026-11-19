@@ -77,7 +77,7 @@
         h("div", { style: "flex:1;min-width:0" }, h("strong", {}, (T[e.team_season_id] || "") + " — " + (e.opponent || "")), h("div", { class: "sub" }, K().cap(K().dayFmt.format(new Date(e.starts_at))))),
         window.MatchUtil ? MatchUtil.resultChip(e) : null)))] : null,
       window.Backup ? await Backup.card(rerender) : null,
-      h("p", { class: "sub", style: "text-align:center;margin-top:18px" }, "COACH ISMO · version 31"),
+      h("p", { class: "sub", style: "text-align:center;margin-top:18px" }, "COACH ISMO · version 32"),
     ];
   }
   Object.assign(window.Views, { accueil: view });

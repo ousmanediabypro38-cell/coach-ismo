@@ -385,3 +385,10 @@ button.tok:hover { background:none; }
 .segb.rs-reussie.on { background:var(--green); color:#03160c; border-color:var(--green); } .segb.rs-partielle.on { background:var(--amber); color:#241800; border-color:var(--amber); } .segb.rs-non.on { background:#b8433b; color:#fff; border-color:#b8433b; }
 .pill.rs-reussie { color:var(--green-hi); border-color:var(--green); } .pill.rs-partielle { color:var(--amber); border-color:var(--amber); } .pill.rs-non { color:#ef7c72; border-color:#7a2f29; }
 .pick { border-color:var(--green); } .bkrow { display:flex; align-items:flex-start; gap:8px; padding:10px 0; border-top:1px solid var(--line); } .bkrow:first-of-type { border-top:0; }
+
+/* ---- Routines : textes et schémas ---- */
+.rblock { padding:0; } .rblock > summary { list-style:none; cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:16px 18px; font-size:1.05rem; } .rblock > summary::-webkit-details-marker { display:none; }
+.rblock > summary::after { content:"+"; font:700 1.4rem var(--num); color:var(--green-hi); margin-left:auto; padding-left:10px; } .rblock[open] > summary::after { content:"–"; }
+.rblock > :not(summary) { margin-left:18px; margin-right:18px; } .rblock > :last-child { margin-bottom:18px; }
+.rbody .rh { margin:16px 0 6px; font:700 1.05rem var(--num); color:var(--green-hi); } .rl { margin:6px 0; padding-left:22px; display:grid; gap:6px; line-height:1.45; } .rp { margin:8px 0; line-height:1.5; }
+.rfig { margin:16px 0 0; } .rfig .dsvg { max-width:560px; } .rfig figcaption { display:grid; gap:2px; margin-top:6px; color:var(--mut); font-size:.92rem; } .rfig figcaption strong { color:var(--text); }

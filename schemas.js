@@ -97,18 +97,21 @@
   }
   async function flush() {
     clearTimeout(ed.timer); ed.timer = null; if (!ed.id) return;
-    const d = await DB.get("playbook_diagrams", ed.id); if (!d) return;
-    d.data = { items: ed.items }; await DB.save("playbook_diagrams", d);
+    const T = ed.table || "playbook_diagrams", d = await DB.get(T, ed.id); if (!d) return;
+    d.data = { items: ed.items }; await DB.save(T, d);
   }
   const later = () => { clearTimeout(ed.timer); ed.timer = setTimeout(flush, 500); };
   const snap = () => { ed.hist.push(JSON.stringify(ed.items)); if (ed.hist.length > 40) ed.hist.shift(); };
 
   async function editorView(v) {
-    const d = await DB.get("playbook_diagrams", v.id);
-    const e = d ? await DB.get("playbook_entries", d.entry_id) : null;
-    if (!d || d.deleted_at || !e) { U().setView({ name: "playbook" }); return []; }
-    if (ed.id !== d.id) ed = { id: d.id, items: JSON.parse(JSON.stringify((d.data && d.data.items) || [])), hist: [], tool: "select", timer: null };
-    const rerender = () => U().setView({ name: "playDiagram", id: d.id });
+    const T = v.table || "playbook_diagrams", isR = T === "routine_diagrams";
+    const d = await DB.get(T, v.id);
+    const e = d ? (isR ? await DB.get("routines", d.routine_id) : await DB.get("playbook_entries", d.entry_id)) : null;
+    if (!d || d.deleted_at || !e) { U().setView(isR ? { name: "accueil" } : { name: "playbook" }); return []; }
+    const eTitle = e.title || e.name || "Schéma", rc = (window.RoutineUtil && RoutineUtil.ctx) || {};
+    const leave = () => isR ? U().setView({ name: "routineEdit", id: e.id, from: rc.from, eventId: rc.eventId, tsId: rc.tsId }) : U().setView({ name: "playEntry", id: e.id });
+    if (ed.id !== d.id) ed = { id: d.id, table: T, items: JSON.parse(JSON.stringify((d.data && d.data.items) || [])), hist: [], tool: "select", timer: null };
+    const rerender = () => U().setView({ name: "playDiagram", id: d.id, table: T });
     const svg = sv("svg", { viewBox: [VB.x, VB.y, VB.w, VB.h].join(" "), class: "dsvg edit" });
     svg.append(court()); const layer = sv("g"); svg.append(layer);
     const paint = (extra) => { layer.replaceChildren(); ed.items.map((it, i) => [it, i]).sort((x, y) => (x[0].p ? 0 : 1) - (y[0].p ? 0 : 1)).forEach(([it, i]) => layer.append(node(it, i))); if (extra) layer.append(extra); };
@@ -157,14 +160,14 @@
 
     const toolBtn = ([k, l]) => h("button", { type: "button", class: "chip dtool" + (ed.tool === k ? " on" : ""), onclick: () => { ed.tool = k; rerender(); } }, l);
     const title = h("input", { value: d.title || "", placeholder: "Titre (ex. Phase 1)" });
-    title.addEventListener("change", async () => { const c = await DB.get("playbook_diagrams", d.id); c.title = title.value.trim() || null; await DB.save("playbook_diagrams", c); });
+    title.addEventListener("change", async () => { const c = await DB.get(T, d.id); c.title = title.value.trim() || null; await DB.save(T, c); });
     const note = h("textarea", { rows: 3, placeholder: "Ce qui se passe sur ce schéma : qui passe, qui coupe, qui écrane…" }, d.note || "");
-    note.addEventListener("change", async () => { const c = await DB.get("playbook_diagrams", d.id); c.note = note.value.trim() || null; await DB.save("playbook_diagrams", c); });
+    note.addEventListener("change", async () => { const c = await DB.get(T, d.id); c.note = note.value.trim() || null; await DB.save(T, c); });
     const hint = { select: "Fais glisser un élément. Touche un joueur pour changer son numéro.", o: "Touche le terrain pour poser un attaquant (1 à 5).", x: "Touche le terrain pour poser un défenseur.", b: "Touche pour poser le ballon.",
       move: "Trace d'un geste le déplacement : une flèche pleine.", dribble: "Trace le dribble : flèche en zigzag.", pass: "Trace la passe : flèche en pointillés.", screen: "Trace jusqu'à l'écran : la barre se pose au bout.", txt: "Touche pour écrire un texte. Touche un texte pour le modifier.", erase: "Touche un élément pour l'effacer." }[ed.tool];
-    const back = async () => { await flush(); U().setView({ name: "playEntry", id: e.id }); };
+    const back = async () => { await flush(); leave(); };
     return [
-      h("button", { class: "small ghost back", onclick: back }, Icon("chevL", 18), e.title),
+      h("button", { class: "small ghost back", onclick: back }, Icon("chevL", 18), eTitle),
       h("h2", {}, "Schéma"),
       h("div", { class: "dtools" }, TOOLS.map(toolBtn)),
       h("p", { class: "sub dhint" }, hint),
@@ -172,16 +175,16 @@
       h("div", { class: "btns wrap" },
         h("button", { class: "small ghost", onclick: () => { if (!ed.hist.length) return; ed.items = JSON.parse(ed.hist.pop()); paint(); later(); } }, "Annuler le dernier geste"),
         h("button", { class: "small ghost danger", onclick: () => { if (!ed.items.length || !confirm("Tout effacer sur ce schéma ?")) return; snap(); ed.items = []; paint(); later(); } }, "Tout effacer"),
-        h("button", { class: "small ghost", onclick: async () => { await flush(); await exportPng(render({ items: ed.items }), (e.title + "-" + (title.value || "schema")).replace(/[^\w-]+/g, "_")); } }, Icon("upload", 16), "Exporter en image"),
+        h("button", { class: "small ghost", onclick: async () => { await flush(); await exportPng(render({ items: ed.items }), (eTitle + "-" + (title.value || "schema")).replace(/[^\w-]+/g, "_")); } }, Icon("upload", 16), "Exporter en image"),
         h("button", { class: "small ghost", onclick: async () => {
-          await flush(); const all = (await DB.live("playbook_diagrams")).filter(x => x.entry_id === e.id);
+          await flush(); const all = (await DB.live(T)).filter(x => isR ? (x.routine_id === e.id && x.block_key === d.block_key) : x.entry_id === e.id);
           const m = (title.value || "").match(/^(.*?)(\d+)\s*$/), t2 = m ? m[1] + (+m[2] + 1) : (title.value || "Schéma") + " (suite)";
-          const n = await DB.save("playbook_diagrams", { entry_id: e.id, title: t2, note: null, court: "half", data: { items: JSON.parse(JSON.stringify(ed.items)) }, position: all.length });
-          ed = { id: null, items: [], hist: [], tool: "select", timer: null }; U().setView({ name: "playDiagram", id: n.id });
+          const n = await DB.save(T, { ...(isR ? { routine_id: e.id, block_key: d.block_key } : { entry_id: e.id }), title: t2, note: null, court: "half", data: { items: JSON.parse(JSON.stringify(ed.items)) }, position: all.length });
+          ed = { id: null, items: [], hist: [], tool: "select", timer: null }; U().setView({ name: "playDiagram", id: n.id, table: T });
         } }, Icon("copy", 16), "Dupliquer en phase suivante")),
       h("section", { class: "card" }, U().field("Titre", title), U().field("Légende", note)),
       h("div", { class: "btns wrap" }, h("button", { onclick: back }, Icon("check", 18), "Terminé"),
-        h("button", { class: "ghost danger", onclick: async () => { if (!confirm("Supprimer ce schéma ?")) return; clearTimeout(ed.timer); const c = await DB.get("playbook_diagrams", d.id); await DB.remove("playbook_diagrams", c); ed = { id: null, items: [], hist: [], tool: "select", timer: null }; U().setView({ name: "playEntry", id: e.id }); } }, Icon("trash", 18), "Supprimer le schéma")),
+        h("button", { class: "ghost danger", onclick: async () => { if (!confirm("Supprimer ce schéma ?")) return; clearTimeout(ed.timer); const c = await DB.get(T, d.id); await DB.remove(T, c); ed = { id: null, items: [], hist: [], tool: "select", timer: null }; leave(); } }, Icon("trash", 18), "Supprimer le schéma")),
     ];
   }
 
@@ -212,6 +215,6 @@
         : h("p", { class: "sub" }, "Dessine le système au doigt sur un demi-terrain : joueurs, déplacements, dribbles, passes, écrans. Ajoute un schéma par phase."));
   }
 
-  window.DiagramUtil = { entrySection, render, exportPng };
+  window.DiagramUtil = { entrySection, render, exportPng, resetEditor: () => { ed = { id: null, items: [], hist: [], tool: "select", timer: null }; } };
   Object.assign(window.Views, { playDiagram: editorView });
 })();

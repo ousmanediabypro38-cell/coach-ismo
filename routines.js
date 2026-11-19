@@ -69,6 +69,26 @@
     { key: "deverr", name: "Déverrouillage musculaire et articulaire", source: "Ta vidéo « Déverrouillage articulaire »", blocks: [
       { title: "Déverrouillage articulaire", duration: "", items: ["Vidéo : " + VIDEO, "Écris ici les exercices dans l'ordre"] }] },
   ];
+  if (window.RoutineModelU13) MODELS.unshift(window.RoutineModelU13);
+  const ctx = {};            // écran d'origine (pour revenir depuis l'éditeur de schémas)
+  const newKey = () => "k" + Math.random().toString(36).slice(2, 9);
+  const inline = s => String(s).split(/(\*\*[^*]+\*\*)/).map(p => /^\*\*[^*]+\*\*$/.test(p) ? h("b", {}, p.slice(2, -2)) : p);
+  // texte explicatif : « ## titre », « - puce », « 1. numéro », sinon paragraphe
+  function fmt(text) {
+    const out = []; let list = null;
+    const flush = () => { list = null; };
+    for (const raw of String(text || "").split("\n")) {
+      const l = raw.trim(); if (!l) { flush(); continue; }
+      let m;
+      if ((m = l.match(/^##\s+(.*)$/))) { flush(); out.push(h("h4", { class: "rh" }, m[1])); }
+      else if ((m = l.match(/^[-•]\s+(.*)$/))) { if (!list || list.tag !== "ul") { list = { tag: "ul", el: h("ul", { class: "rl" }) }; out.push(list.el); } list.el.append(h("li", {}, ...inline(m[1]))); }
+      else if ((m = l.match(/^\d+[.)]\s+(.*)$/))) { if (!list || list.tag !== "ol") { list = { tag: "ol", el: h("ol", { class: "rl" }) }; out.push(list.el); } list.el.append(h("li", {}, ...inline(m[1]))); }
+      else { flush(); out.push(h("p", { class: "rp" }, ...inline(l))); }
+    }
+    return out;
+  }
+  const diagOf = async rid => (await DB.live("routine_diagrams")).filter(d => d.routine_id === rid).sort((a, b) => (a.position || 0) - (b.position || 0));
+  const diagCard = d => h("figure", { class: "rfig" }, window.DiagramUtil ? DiagramUtil.render(d.data, { label: d.title || "Schéma" }) : null, d.title ? h("figcaption", {}, h("strong", {}, d.title), d.note ? h("span", {}, d.note) : null) : null);
   const ck = {};            // cases cochées (par routine, gardées seulement le temps de l'ouverture)
   const draft = {};         // routine en cours de modification
   const rows = async tsId => (await DB.live("routines")).filter(r => r.team_season_id === tsId || !r.team_season_id).sort((a, b) => (a.position || 0) - (b.position || 0) || (a.name || "").localeCompare(b.name || ""));
@@ -86,7 +106,9 @@
   async function listView(v) {
     const tsId = v.tsId, mine = await rows(tsId), name = await teamName(tsId);
     const back = v.from === "match" ? () => U().setView({ name: "event", id: v.eventId }) : () => U().setView({ name: "team", id: tsId });
-    const copy = async m => { const r = await DB.save("routines", { team_season_id: m.mine ? null : tsId, name: m.mine ? "Ma routine d'avant-match" : m.name, source: m.source, notes: m.notes || "", blocks: clone(m.blocks), position: mine.length }); U().toast("Routine copiée : tu peux la modifier."); U().setView({ name: "routine", id: r.id, from: v.from, eventId: v.eventId, tsId: v.tsId }); };
+    const copy = async m => { const r = await DB.save("routines", { team_season_id: m.mine ? null : tsId, name: m.mine ? "Ma routine d'avant-match" : m.name, source: m.source, notes: m.notes || "", blocks: clone(m.blocks).map(b => { delete b.diagrams; return b; }), position: mine.length });
+      for (const b of m.blocks) for (let i = 0; i < (b.diagrams || []).length; i++) { const g = b.diagrams[i]; await DB.save("routine_diagrams", { routine_id: r.id, block_key: b.key, title: g.title, note: g.note || null, court: "half", data: { items: clone(g.items) }, position: i }); }
+      U().toast("Routine copiée : tu peux la modifier."); U().setView({ name: "routine", id: r.id, from: v.from, eventId: v.eventId, tsId: v.tsId }); };
     return [
       h("button", { class: "small ghost back", onclick: back }, Icon("chevL", 18), v.from === "match" ? "Fiche de la rencontre" : name),
       h("div", { class: "row" }, h("div", {}, h("h2", { class: "tight" }, "Routines d'avant-match"), h("p", { class: "sub" }, name)),
@@ -96,7 +118,7 @@
         : U().empty("clipboard", "Aucune routine pour cette équipe", "Crée la tienne, ou copie un des modèles ci-dessous et adapte-le.", null),
       h("h3", {}, "Modèles à copier"),
       h("p", { class: "sub" }, "Routines récupérées ailleurs. La copie est à toi : tu peux tout changer sans toucher au modèle."),
-      MODELS.map(m => h("section", { class: "card" }, h("div", { class: "row tight" }, h("strong", {}, m.name), h("button", { class: "small", onclick: () => copy(m) }, Icon("copy", 16), m.mine ? "Créer ma routine (toutes mes équipes)" : "Copier pour cette équipe")),
+      MODELS.map(m => h("section", { class: "card" }, h("div", { class: "row tight" }, h("strong", {}, m.name, m.official ? h("span", { class: "pill", style: "margin-left:8px" }, "Officielle") : null), h("button", { class: "small", onclick: () => copy(m) }, Icon("copy", 16), m.mine ? "Créer ma routine (toutes mes équipes)" : m.official ? "Installer pour cette équipe" : "Copier pour cette équipe")),
         h("p", { class: "sub" }, m.blocks.map(b => b.title + (b.duration ? " (" + b.duration + ")" : "")).join(" · ")))),
     ];
   }
@@ -105,6 +127,8 @@
     const r = await DB.get("routines", v.id); if (!r || r.deleted_at) return listView({ tsId: v.tsId });
     const gk = r.id + "|" + (v.tsId || ""), grp = grpOf[gk] || (grpOf[gk] = await groupOf(v.tsId || r.team_season_id));
     const set = ck[r.id] || (ck[r.id] = new Set()), rerender = () => U().setView({ name: "routine", id: r.id, from: v.from, eventId: v.eventId, tsId: v.tsId });
+    Object.assign(ctx, { tsId: v.tsId, from: v.from, eventId: v.eventId });
+    const dg = await diagOf(r.id);
     const allB = r.blocks || [], hasGrp = allB.some(b => b.for && b.for.length), blocks = allB.filter(b => !b.for || !b.for.length || b.for.includes(grp)), total = blocks.reduce((t, b) => t + Math.max(1, (b.items || []).length), 0), done = [...set].length;
     const row = (key, label, sub) => h("button", { type: "button", class: "chk" + (set.has(key) ? " on" : ""), onclick: () => { set.has(key) ? set.delete(key) : set.add(key); rerender(); } }, h("i", {}, set.has(key) ? Icon("check", 16) : null), h("span", {}, ...nameDesc(label), sub ? h("small", {}, sub) : null));
     return [
@@ -115,7 +139,10 @@
       hasGrp ? h("div", { class: "btns wrap" }, GROUPS.map(([k, l]) => h("button", { class: "small " + (grp === k ? "" : "ghost"), onclick: () => { grpOf[gk] = k; set.clear(); rerender(); } }, l))) : null,
       r.notes ? h("p", { class: "sub" }, r.notes) : null,
       total ? h("p", { class: "sub" }, done + " / " + total + " faits") : null,
-      blocks.map((b, bi) => (b.items || []).length
+      blocks.map((b, bi) => (b.body || dg.some(d => d.block_key === b.key && b.key))
+        ? h("details", { class: "card rblock", open: bi === 0 && (blocks.length < 3) }, h("summary", {}, h("strong", {}, b.title || "Bloc"), b.duration ? h("span", { class: "pill" }, b.duration) : null),
+            (b.items || []).length ? h("div", { class: "chklist" }, b.items.map((t, ii) => row(bi + ":" + ii, t))) : null, h("div", { class: "rbody" }, fmt(b.body)), dg.filter(d => d.block_key === b.key).map(diagCard))
+        : (b.items || []).length
         ? h("section", { class: "card" }, h("div", { class: "row tight" }, h("h3", { class: "tight" }, b.title || "Bloc"), b.duration ? h("span", { class: "pill" }, b.duration) : null),
             h("div", { class: "chklist" }, b.items.map((t, ii) => row(bi + ":" + ii, t))))
         : h("div", { class: "chklist solo" }, row(bi + ":b", b.title || "Bloc", b.duration))),
@@ -124,7 +151,9 @@
 
   async function editView(v) {
     const r = await DB.get("routines", v.id); if (!r) return listView({ tsId: v.tsId });
-    const D = draft[r.id] || (draft[r.id] = { name: r.name, notes: r.notes || "", blocks: (r.blocks || []).map(b => ({ title: b.title || "", duration: b.duration || "", text: (b.items || []).join("\n"), for: (b.for || []).slice() })), shared: !r.team_season_id });
+    const D = draft[r.id] || (draft[r.id] = { name: r.name, notes: r.notes || "", blocks: (r.blocks || []).map(b => ({ key: b.key || newKey(), title: b.title || "", duration: b.duration || "", text: (b.items || []).join("\n"), body: b.body || "", for: (b.for || []).slice() })), shared: !r.team_season_id });
+    Object.assign(ctx, { tsId: v.tsId, from: v.from, eventId: v.eventId });
+    const dgs = await diagOf(r.id);
     const rerender = () => U().setView({ name: "routineEdit", id: r.id, from: v.from, eventId: v.eventId, tsId: v.tsId });
     const move = (i, d) => { const j = i + d; if (j < 0 || j >= D.blocks.length) return; [D.blocks[i], D.blocks[j]] = [D.blocks[j], D.blocks[i]]; rerender(); };
     const name = h("input", { value: D.name, oninput: e => { D.name = e.target.value; } });
@@ -141,13 +170,16 @@
         h("div", { class: "grid2" }, U().field("Titre", h("input", { value: b.title, placeholder: "Ex. Vestiaire, Tirs…", oninput: e => { b.title = e.target.value; } })),
           U().field("Durée (facultatif)", h("input", { value: b.duration, placeholder: "Ex. 15 min", oninput: e => { b.duration = e.target.value; } }))),
         h("div", { class: "btns wrap" }, h("span", { class: "sub" }, "Pour :"), GROUPS.map(([k, l]) => { const all = !b.for.length, on = all || b.for.includes(k); return h("button", { type: "button", class: "small " + (on ? "" : "ghost"), onclick: () => { let f = all ? GROUPS.map(g => g[0]) : b.for.slice(); f = f.includes(k) ? f.filter(x => x !== k) : f.concat(k); b.for = f.length === GROUPS.length || !f.length ? [] : f; rerender(); } }, l); })),
-        U().field("Détail : une ligne par exercice", h("textarea", { rows: 4, oninput: e => { b.text = e.target.value; } }, b.text)))),
+        U().field("Liste à cocher : une ligne par exercice", h("textarea", { rows: 3, oninput: e => { b.text = e.target.value; } }, b.text)),
+        U().field("Texte explicatif (## titre, - puce, 1. numéro)", h("textarea", { rows: b.body ? 9 : 3, placeholder: "Mise en place, déroulement, variantes…", oninput: e => { b.body = e.target.value; } }, b.body)),
+        h("div", { class: "row tight" }, h("strong", {}, "Schémas de ce bloc"), h("button", { type: "button", class: "small ghost", onclick: async () => { const mine2 = dgs.filter(d => d.block_key === b.key); const n = await DB.save("routine_diagrams", { routine_id: r.id, block_key: b.key, title: mine2.length ? "Schéma " + (mine2.length + 1) : "Schéma 1", note: null, court: "half", data: { items: [] }, position: mine2.length }); if (window.DiagramUtil) DiagramUtil.resetEditor(); U().setView({ name: "playDiagram", id: n.id, table: "routine_diagrams" }); } }, Icon("plus", 16), "Nouveau schéma")),
+        dgs.filter(d => d.block_key === b.key).length ? h("div", { class: "thumbs" }, dgs.filter(d => d.block_key === b.key).map(d => h("button", { type: "button", class: "thumb", onclick: () => { if (window.DiagramUtil) DiagramUtil.resetEditor(); U().setView({ name: "playDiagram", id: d.id, table: "routine_diagrams" }); } }, window.DiagramUtil ? DiagramUtil.render(d.data, { label: d.title || "Schéma" }) : null, h("strong", {}, d.title || "Schéma")))) : null)),
       h("div", { class: "btns wrap" },
-        h("button", { type: "button", class: "ghost", onclick: () => { D.blocks.push({ title: "", duration: "", text: "" }); rerender(); } }, Icon("plus", 18), "Ajouter un bloc"),
+        h("button", { type: "button", class: "ghost", onclick: () => { D.blocks.push({ key: newKey(), title: "", duration: "", text: "", body: "", for: [] }); rerender(); } }, Icon("plus", 18), "Ajouter un bloc"),
         h("button", { type: "button", onclick: async () => {
           const cur = await DB.get("routines", r.id);
           cur.name = D.name.trim() || "Routine"; cur.notes = D.notes.trim(); cur.team_season_id = D.shared ? null : (cur.team_season_id || v.tsId || null);
-          cur.blocks = D.blocks.filter(b => b.title.trim() || b.text.trim()).map(b => ({ title: b.title.trim(), duration: b.duration.trim(), items: b.text.split("\n").map(x => x.trim()).filter(Boolean), for: b.for && b.for.length ? b.for : undefined }));
+          cur.blocks = D.blocks.filter(b => b.title.trim() || b.text.trim() || b.body.trim()).map(b => ({ key: b.key, title: b.title.trim(), duration: b.duration.trim(), body: b.body.trim() || undefined, items: b.text.split("\n").map(x => x.trim()).filter(Boolean), for: b.for && b.for.length ? b.for : undefined }));
           await DB.save("routines", cur); delete draft[r.id]; delete ck[r.id]; U().toast("Routine enregistrée."); U().setView({ name: "routine", id: r.id, from: v.from, eventId: v.eventId, tsId: v.tsId });
         } }, Icon("check", 18), "Enregistrer"),
         h("button", { type: "button", class: "ghost danger", onclick: async () => { if (!confirm("Supprimer cette routine ?")) return; await DB.remove("routines", r); delete draft[r.id]; U().setView({ name: "routines", tsId: v.tsId || r.team_season_id, from: v.from, eventId: v.eventId }); } }, "Supprimer")));
@@ -159,6 +191,6 @@
     U().setView(mine.length === 1 && from === "match" ? { name: "routine", id: mine[0].id, from, eventId } : { name: "routines", tsId, from, eventId });
   }
 
-  window.RoutineUtil = { open };
+  window.RoutineUtil = { open, ctx };
   Object.assign(window.Views, { routines: listView, routine: routineView, routineEdit: editView });
 })();
