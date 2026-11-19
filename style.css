@@ -379,3 +379,9 @@ button.tok:hover { background:none; }
 .chk { justify-content:flex-start; text-align:left; } .chk span { flex:1; } .chk small { display:block; color:var(--mut); font-size:.85rem; } .chklist.solo { margin:0; } .chklist.solo .chk { min-height:64px; font-weight:600; }
 .chk span .xn { display:block; } .chk span .xd { display:block; color:var(--mut); font-weight:400; font-size:.92rem; margin-top:2px; line-height:1.35; } .chk.on span .xd { color:var(--mut); }
 .chk:hover, .chk:active { background:var(--s2); color:var(--text); } .chk.on:hover { background:var(--green-soft); }
+/* ---- Missions ---- */
+.msn { display:grid; gap:8px; padding:10px 0; border-top:1px solid var(--line); } .msn:first-child { border-top:0; padding-top:0; }
+.msn input, .msn textarea { width:100%; } .grid2e { display:grid; grid-template-columns:1fr 1fr; gap:8px; } @media (max-width:600px) { .grid2e { grid-template-columns:1fr; } }
+.segb.rs-reussie.on { background:var(--green); color:#03160c; border-color:var(--green); } .segb.rs-partielle.on { background:var(--amber); color:#241800; border-color:var(--amber); } .segb.rs-non.on { background:#b8433b; color:#fff; border-color:#b8433b; }
+.pill.rs-reussie { color:var(--green-hi); border-color:var(--green); } .pill.rs-partielle { color:var(--amber); border-color:var(--amber); } .pill.rs-non { color:#ef7c72; border-color:#7a2f29; }
+.pick { border-color:var(--green); } .bkrow { display:flex; align-items:flex-start; gap:8px; padding:10px 0; border-top:1px solid var(--line); } .bkrow:first-of-type { border-top:0; }

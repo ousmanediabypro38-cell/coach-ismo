@@ -166,6 +166,7 @@
         } }, "Enregistrer"), h("button", { class: "small ghost", onclick: () => { st.ef = null; rerender(); } }, "Annuler")));
     }
 
+    const missionNodes = window.MissionUtil ? await MissionUtil.playerSection(p, v.tsId) : [];
     const statsNodes = window.StatsUtil ? await StatsUtil.playerSection(p, v.tsId, rerender) : [];
     const photoIn = h("input", { type: "file", accept: "image/*", class: "hidden", onchange: async ev => {
       const f = ev.target.files[0]; if (!f) return; ev.target.value = "";
@@ -199,6 +200,7 @@
         h("div", { class: "goaladd" }, gcycle, gbody, h("button", { class: "small", onclick: addGoal }, Icon("plus", 16), "Ajouter")),
         h("p", { class: "sub" }, "Touche le statut d'un objectif pour le faire passer de « En cours » à « Atteint », puis « Abandonné ».")),
 
+      ...missionNodes,
       ...statsNodes,
 
       h("div", { class: "row" }, h("h3", {}, "Observations (" + obsAll.length + ")"),
