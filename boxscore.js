@@ -6,14 +6,21 @@
   const mmss = s => s == null ? "" : Math.floor(s / 60) + ":" + String(Math.round(s % 60)).padStart(2, "0");
   const num = i => i.value === "" ? null : Math.max(0, parseInt(i.value, 10) || 0);
 
+  const showAll = {};
   async function view(v) {
     const e = await DB.get("events", v.id);
     if (!e || e.deleted_at) { U().setView({ name: "cal" }); return []; }
-    const [mem, pl, boxes, teams] = await Promise.all([DB.live("memberships"), DB.live("players"), DB.live("match_boxscores"), U().loadTeams()]);
+    const [mem, pl, boxes, teams, av] = await Promise.all([DB.live("memberships"), DB.live("players"), DB.live("match_boxscores"), U().loadTeams(), DB.live("match_availability")]);
     const P = Object.fromEntries(pl.map(p => [p.id, p])), t = teams.find(x => x.ts.id === e.team_season_id);
-    const roster = mem.filter(m => m.team_season_id === e.team_season_id && P[m.player_id]).map(m => ({ ...P[m.player_id], jersey: m.jersey_number }))
+    const fullRoster = mem.filter(m => m.team_season_id === e.team_season_id && P[m.player_id]).map(m => ({ ...P[m.player_id], jersey: m.jersey_number }))
       .sort((a, b) => (a.jersey ?? 999) - (b.jersey ?? 999) || a.first_name.localeCompare(b.first_name));
-    const mine = Object.fromEntries(boxes.filter(b => b.event_id === e.id).map(b => [b.player_id, b]));
+    const mine = Object.fromEntries(boxes.filter(b => b.event_id === e.id && !b.deleted_at).map(b => [b.player_id, b]));
+    // Seuls les joueurs sélectionnés apparaissent : convoqués (présences), sinon groupe du match, sinon tout l'effectif. Ceux déjà saisis restent affichés.
+    const convoked = new Set(av.filter(a => a.event_id === e.id && !a.deleted_at && a.convoked).map(a => a.player_id));
+    const picked = convoked.size ? convoked : new Set(e.squad || []);
+    const filtered = picked.size ? fullRoster.filter(p => picked.has(p.id) || mine[p.id]) : fullRoster;
+    const roster = showAll[e.id] || !filtered.length ? fullRoster : filtered;
+    const hidden = fullRoster.length - roster.length;
     const back = () => U().setView({ name: "match", id: e.id });
     if (!roster.length) return [h("button", { class: "small ghost back", onclick: back }, Icon("chevL", 18), "Match"), U().empty("users", "Aucun joueur dans cette équipe", "Ajoute d'abord les joueurs dans l'onglet Équipes.", null)];
 
@@ -63,7 +70,7 @@
     return [
       h("button", { class: "small ghost back", onclick: back }, Icon("chevL", 18), "Match"),
       h("h2", {}, "Saisie après match"),
-      h("p", { class: "sub" }, (t ? t.team.name : "") + (e.opponent ? " — " + e.opponent : "") + " · recopie la feuille « Résumé » de l'e-Marque. Laisse vide les joueurs qui n'ont pas joué."),
+      h("p", { class: "sub" }, (t ? t.team.name : "") + (e.opponent ? " — " + e.opponent : "") + " · recopie la feuille « Résumé » de l'e-Marque. Seuls les joueurs convoqués sont listés ; laisse vide ceux qui n'ont pas joué."),
       h("section", { class: "card" },
         h("h3", { class: "tight" }, "Score"),
         h("div", { class: "tbl" }, h("table", { class: "stats" },
@@ -77,6 +84,7 @@
           h("thead", {}, h("tr", {}, [h("th", {}, "Joueur"), h("th", { class: "r", title: "5 de départ" }, "5 dép."), h("th", { class: "r" }, "Min"), ...COLS.map(([, l, tt]) => h("th", { class: "r", title: tt }, l)), h("th", { class: "r" }, "Pts")])),
           h("tbody", {}, rows.map(r => h("tr", {}, h("td", {}, (r.p.jersey != null ? "#" + r.p.jersey + " " : "") + r.p.first_name + (r.p.last_name ? " " + r.p.last_name.charAt(0) + "." : "")),
             h("td", { class: "r" }, r.st), h("td", { class: "r" }, r.min), ...COLS.map(([k]) => h("td", { class: "r" }, r.f[k])), r.pts))))),
+        hidden > 0 ? h("button", { class: "small ghost", onclick: () => { showAll[e.id] = true; U().setView({ name: "boxEntry", id: e.id }); } }, "Ajouter un joueur non sélectionné (" + hidden + ")") : null,
         h("p", { class: "sub" }, "Les points sont calculés : 2 × (2 int. + 2 ext.) + 3 × 3 pts + LF. Le temps de jeu s'écrit « 22:54 » ou en minutes (« 23 »).")),
       h("div", { class: "btns" }, h("button", { onclick: save }, Icon("check", 18), "Enregistrer"), h("button", { class: "ghost", onclick: back }, "Annuler"), msg),
     ];
