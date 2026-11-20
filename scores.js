@@ -4,7 +4,7 @@
   const N = s => window.Standings.norm(s);
   const fmt = iso => iso ? new Date(iso).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" }) : "";
   const fmtH = iso => iso ? new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "";
-  let timer = null, busy = false, lastStd = {};
+  let timer = null, busy = false, lastStd = {}, lastRun = 0, lastSig = null; const openSet = new Set();
 
   const sameTeam = (a, b) => { const x = N(a), y = N(b); return x === y || x.includes(y) || y.includes(x); };
   const scoreTxt = m => (m.hs != null && m.as != null) ? m.hs + " – " + m.as : "à venir";
@@ -19,7 +19,8 @@
   }
 
   async function refreshAll(force) {
-    if (busy) return; busy = true;
+    if (busy) return; busy = true; lastRun = Date.now();
+    let sig = "";
     try {
       try { await window.Live.refresh(); } catch (e) {}
       const list = await U().loadTeams();
@@ -28,13 +29,17 @@
         if (!force && Date.now() - (lastStd[x.ts.id] || 0) < 30 * 60e3) continue;
         lastStd[x.ts.id] = Date.now(); await S.refresh(x.ts, x.team, false);
       }
+      const st = []; for (const x of list) { const m = await window.Standings.stored(x.ts); st.push(m.at); }
+      sig = JSON.stringify([window.Live.state.all.map(m => [m.home, m.away, m.hs, m.as]), st]);
     } finally { busy = false; }
+    // On ne redessine que si les données ont changé : sinon l'écran clignote et les dépliants se referment.
+    if (sig === lastSig && !force) return; lastSig = sig;
     const v = U().current(); if (v && v.name === "scores" && !document.querySelector("#app input:focus")) U().setView(v);
   }
 
   async function view() {
     if (!timer) timer = setInterval(() => { const v = U().current(); if (v && v.name === "scores" && !document.hidden && navigator.onLine) refreshAll(false); }, 45000);
-    setTimeout(() => refreshAll(false), 300);
+    if (Date.now() - lastRun > 20000 && !busy) setTimeout(() => refreshAll(false), 300);
     const list = (await U().loadTeams()).filter(x => x.ts && x.team);
     const S = window.Standings, live = (window.Live && window.Live.state.all) || [], at = window.Live && window.Live.state.at;
     const withPoule = list.filter(x => S.pouleId(x.ts.standings_poule)), without = list.filter(x => !S.pouleId(x.ts.standings_poule));
@@ -55,7 +60,7 @@
           h("button", { class: "small ghost", onclick: () => U().setView({ name: "team", id: x.ts.id }) }, "Fiche équipe")),
         inPoule.length ? [h("div", { class: "scg" }, "En direct dans la poule"), inPoule.map(m => row(m, mk, inPoule))] : h("p", { class: "sub" }, "Aucun match en direct dans cette poule."),
         mine.length ? [h("div", { class: "scg" }, "Mes matchs"), [...next.slice(0, 3), ...played.slice(-3).reverse()].map(m => row(m, mk, inPoule))] : (matches.length ? h("p", { class: "sub" }, "Je ne retrouve pas ton équipe dans le calendrier : vérifie « Nom de ton équipe dans le classement » sur la fiche équipe.") : null),
-        (recentOthers.length || nextOthers.length) ? h("details", { class: "mini" }, h("summary", {}, "Matchs des autres équipes de la poule"),
+        (recentOthers.length || nextOthers.length) ? h("details", Object.assign({ class: "mini", ontoggle: e => { e.currentTarget.open ? openSet.add(x.ts.id) : openSet.delete(x.ts.id); } }, openSet.has(x.ts.id) ? { open: true } : {}), h("summary", {}, "Matchs des autres équipes de la poule"),
           nextOthers.length ? [h("div", { class: "scg" }, "À venir"), nextOthers.map(m => row(m, mk, inPoule))] : null,
           recentOthers.length ? [h("div", { class: "scg" }, "Derniers résultats"), recentOthers.map(m => row(m, mk, inPoule))] : null) : null));
     }
