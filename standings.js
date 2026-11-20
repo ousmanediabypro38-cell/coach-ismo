@@ -6,7 +6,7 @@
   const norm = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
   const pick = (o, keys) => { for (const k of keys) { if (o && o[k] != null && typeof o[k] !== "object") return o[k]; } return null; };
   // Accepte un numéro seul, ou un lien contenant « /poules/NNN ». Un autre lien (ex. numéro de comité) est refusé.
-  const pouleId = t => { const s = String(t || "").trim(); if (/^\d+$/.test(s)) return s; const m = s.match(/poules?\/(\d+)/i); return m ? m[1] : ""; };
+  const pouleId = t => { const s = String(t || "").trim(); if (/^\d+$/.test(s)) return s; const m = s.match(/[?&]poule=(\d+)/i) || s.match(/poules?\/(\d+)/i); return m ? m[1] : ""; };
 
   // Cherche, dans une réponse JSON de forme inconnue, le tableau qui ressemble à un classement.
   function findTable(node, depth) {
@@ -78,7 +78,7 @@
       const cur = await DB.get("team_seasons", ts.id), u = url.value.trim(); let ok = true;
       if (u) { try { const x = new URL(u); ok = /^https?:$/.test(x.protocol); } catch (e) { ok = false; } }
       if (!ok) { U().toast("Ce lien ne semble pas valide (il doit commencer par https://)."); return null; }
-      if (poule.value.trim() && !pouleId(poule.value)) { U().toast("Je ne trouve pas de numéro de poule dans ce lien. Il doit contenir /poules/ suivi du numéro."); return null; }
+      if (poule.value.trim() && !pouleId(poule.value)) { U().toast("Je ne trouve pas de numéro de poule dans ce lien. Il doit contenir « ?poule= » ou « /poules/ » suivi du numéro."); return null; }
       cur.standings_poule = pouleId(poule.value) || null; cur.standings_team = me.value.trim() || null; cur.standings_url = u || null;
       if (rank.value.trim() !== (ts.standings_rank || "")) { cur.standings_rank = rank.value.trim() || null; cur.standings_at = new Date().toISOString(); }
       await DB.save("team_seasons", cur); if (toast) U().toast("Enregistré."); return cur;
