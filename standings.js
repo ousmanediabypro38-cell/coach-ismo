@@ -37,7 +37,7 @@
       lost: pick(o, ["perdus", "defaites", "lost", "losses", "matchs_perdus", "matchsPerdus", "nb_perdus"]),
       pf: pick(o, ["points_marques", "pointsMarques", "pour", "pf", "marques", "paniers_marques"]),
       pa: pick(o, ["points_encaisses", "pointsEncaisses", "contre", "pa", "encaisses", "paniers_encaisses"]),
-    })).sort((a, b) => a.rank - b.rank);
+    })).map(r => { if (r.played == null && r.won != null && r.lost != null) r.played = +r.won + +r.lost; return r; }).sort((a, b) => a.rank - b.rank);
     return rows.length ? rows : null;
   }
   const ord = n => n === 1 ? "1er" : n + "e";
@@ -61,15 +61,16 @@
     const rows = parse(json);
     if (!rows && json && (json.degraded || (Array.isArray(json.classements) && !json.classements.length))) { if (manual) U().toast("La poule n° " + id + " existe mais renvoie un classement vide. Vérifie que c'est bien le numéro de la poule (le lien contient /poules/…), pas celui du comité ou de l'équipe."); return false; }
     if (!rows) { try { window.__standingsRaw = json; } catch (e) {} if (manual) U().toast("Réponse reçue mais format non reconnu. Touche « Copier le diagnostic »."); return false; }
-    const cur = await DB.get("team_seasons", ts.id);
-    cur.standings_data = rows; cur.standings_at = new Date().toISOString();
-    const s = summary(rows, meOf(cur, team)); if (s) cur.standings_rank = s;
-    await DB.save("team_seasons", cur);
+    // Gardé uniquement sur cet appareil (pas synchronisé) : évite les « modifications en double » entre tablette et PC.
+    const s = summary(rows, meOf(ts, team));
+    await DB.setMeta("standings_" + ts.id, { rows, rank: s, at: new Date().toISOString() });
     if (manual) U().toast(s ? "Classement mis à jour : " + s : "Classement mis à jour. Indique le nom de ton équipe pour voir ta position.");
     return true;
   }
 
-  function card(ts, team, rerender) {
+  async function stored(ts) { let m = null; try { m = await DB.getMeta("standings_" + ts.id); } catch (e) {} return m || { rows: [], rank: null, at: null }; }
+  async function card(ts, team, rerender) {
+    const st = await stored(ts);
     const poule = h("input", { type: "text", inputmode: "numeric", placeholder: "Numéro ou lien de la poule", value: ts.standings_poule || "" });
     const me = h("input", { type: "text", placeholder: "Ex. EYBENS", value: ts.standings_team || (team && team.club) || "" });
     const rank = h("input", { type: "text", placeholder: "Ex. 4e · 6 V – 2 D", value: ts.standings_rank || "" });
@@ -83,11 +84,11 @@
       if (rank.value.trim() !== (ts.standings_rank || "")) { cur.standings_rank = rank.value.trim() || null; cur.standings_at = new Date().toISOString(); }
       await DB.save("team_seasons", cur); if (toast) U().toast("Enregistré."); return cur;
     };
-    const rows = Array.isArray(ts.standings_data) ? ts.standings_data : [];
+    const rows = Array.isArray(st.rows) ? st.rows : [];
     const meKey = norm(meOf(ts, team));
-    const when = ts.standings_at ? new Date(ts.standings_at).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : null;
+    const shownRank = st.rank || ts.standings_rank, when = (st.at || ts.standings_at) ? new Date(st.at || ts.standings_at).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : null;
     return h("section", { class: "card" }, h("h3", { class: "tight" }, "Classement de la poule"),
-      h("p", { class: "sub" }, ts.standings_rank ? ts.standings_rank + (when ? " · mis à jour le " + when : "") : "Renseigne le numéro de ta poule pour le récupérer automatiquement, ou saisis ta position à la main."),
+      h("p", { class: "sub" }, shownRank ? shownRank + (when ? " · mis à jour le " + when : "") : "Renseigne le numéro de ta poule pour le récupérer automatiquement, ou saisis ta position à la main."),
       rows.length ? h("div", { class: "tbl" }, h("table", { class: "stats" },
         h("thead", {}, h("tr", {}, ["#", "Équipe", "J", "V", "D", "Pts", "Diff."].map((x, i) => h("th", { class: i > 1 ? "r" : "" }, x)))),
         h("tbody", {}, rows.map(r => h("tr", { class: meKey && norm(r.name).includes(meKey) ? "me" : "" }, h("td", {}, r.rank), h("td", {}, r.name), h("td", { class: "r" }, r.played ?? "—"), h("td", { class: "r" }, r.won ?? "—"), h("td", { class: "r" }, r.lost ?? "—"), h("td", { class: "r strong" }, r.pts ?? "—"),
@@ -118,5 +119,5 @@
   }
   setTimeout(auto, 6000);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) setTimeout(auto, 2500); });
-  window.Standings = { card, refresh, parse, pouleId, auto };
+  window.Standings = { card, refresh, parse, pouleId, auto, stored };
 })();

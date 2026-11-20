@@ -6,6 +6,8 @@
   async function view() {
     const [teams, events, sessions, av, confl] = await Promise.all([U().loadTeams(), DB.live("events"), DB.live("sessions"), DB.live("match_availability"), DB.conflicts()]);
     const T = Object.fromEntries(teams.map(x => [x.ts.id, x.team.name]));
+    const stM = {}; if (window.Standings) await Promise.all(teams.map(async x => { stM[x.ts.id] = await Standings.stored(x.ts); }));
+    const rankOf = x => (stM[x.ts.id] && stM[x.ts.id].rank) || x.ts.standings_rank;
     const now = Date.now(), d0 = new Date(); d0.setHours(0, 0, 0, 0);
     const startToday = d0.getTime();
     const hello = (new Date().getHours() < 18 ? "Bonjour" : "Bonsoir") + " coach Ismo";
@@ -60,10 +62,10 @@
       h("div", { class: "acc2" }, h("div", { class: "accL" },
       hero,
       window.Backup ? await Backup.banner(rerender) : null,
-      teams.some(x => x.ts.standings_rank || x.ts.standings_url) ? [h("h3", {}, "Classements"), h("section", { class: "card" }, teams.filter(x => x.ts.standings_rank || x.ts.standings_url).map(x => {
+      teams.some(x => rankOf(x) || x.ts.standings_url) ? [h("h3", {}, "Classements"), h("section", { class: "card" }, teams.filter(x => rankOf(x) || x.ts.standings_url).map(x => {
         const href = (() => { try { const u = new URL(x.ts.standings_url); return /^https?:$/.test(u.protocol) ? u.href : null; } catch (e) { return null; } })();
         return h(href ? "a" : "button", Object.assign({ class: "item btnitem" }, href ? { href, target: "_blank", rel: "noopener noreferrer" } : { onclick: () => U().setView({ name: "team", id: x.ts.id }) }),
-          h("div", { style: "flex:1;min-width:0" }, h("strong", {}, x.team.name), h("div", { class: "sub" }, x.ts.standings_rank || "Voir le classement")), href ? h("span", { class: "pill" }, "Ouvrir") : null); }))] : null,
+          h("div", { style: "flex:1;min-width:0" }, h("strong", {}, x.team.name), h("div", { class: "sub" }, rankOf(x) || "Voir le classement")), href ? h("span", { class: "pill" }, "Ouvrir") : null); }))] : null,
       h("h3", {}, "Cette semaine"),
       byDay.length ? h("section", { class: "card" }, byDay.map(g => h("div", { class: "agday" }, h("div", { class: "aglbl" }, dayLbl(g.k)),
         g.list.map(it => h("button", { class: "item btnitem", onclick: () => U().setView(it.go) },
@@ -85,7 +87,7 @@
       ),
       ),
       window.Backup ? await Backup.card(rerender) : null,
-      h("p", { class: "sub", style: "text-align:center;margin-top:18px" }, "COACH ISMO · version 38"),
+      h("p", { class: "sub", style: "text-align:center;margin-top:18px" }, "COACH ISMO · version 39"),
     ];
   }
   Object.assign(window.Views, { accueil: view });

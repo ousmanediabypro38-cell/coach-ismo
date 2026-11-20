@@ -251,7 +251,7 @@
           if (!confirm("Supprimer cette équipe pour cette saison ? (les joueurs sont gardés)")) return;
           await DB.remove("team_seasons", ts); setView({ name: "home" });
         } }, "Supprimer l'équipe")),
-      window.Standings ? Standings.card(ts, team, () => render()) : standingsCard(ts),
+      window.Standings ? await Standings.card(ts, team, () => render()) : standingsCard(ts),
       h("h3", {}, "Effectif (" + roster.length + ")"),
       roster.length ? roster.map(({ m, p }) => h("button", { class: "item btnitem", onclick: () => setView({ name: "player", tsId, mId: m.id }) },
         window.SuiviUtil ? SuiviUtil.avatar(p, "sm") : null,
