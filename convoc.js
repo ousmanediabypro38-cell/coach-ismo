@@ -87,8 +87,12 @@
       const y0 = y + hh / 2 - (n - 1) * lh / 2 + size * 0.34;
       (L.length ? L : ["—"]).forEach((s, k) => add(t(x + w / 2, y0 + k * lh, s, size, { w: 600, fill: L.length ? "#111" : "#bbb" })));
     });
-    add(t(500, 1207, "Responsables Goûter", 38), t(500, 1253, c.snack || "", 28, { w: 500, f: F2 }), c.tshirt ? t(500, 1314, "Prévoir Tee-Shirt " + c.tshirt.toUpperCase() + " !", 34) : null,
-      c.carpool ? sv("text", { x: 500, y: c.tshirt ? 1376 : 1330, "text-anchor": "middle", "font-size": 32, "font-weight": 700, fill: GREEN, "font-family": F, textLength: c.carpool.length * 14 > 900 ? 900 : null, lengthAdjust: "spacingAndGlyphs" }, c.carpool) : null);
+    add(t(500, 1207, "Responsables Goûter", 38), t(500, 1253, c.snack || "", 28, { w: 500, f: F2 }));
+    // lignes du bas empilées : tee-shirt, table de marque (match à domicile), covoiturage
+    let yy = 1314; const bottom = (s, size, fill) => { add(sv("text", { x: 500, y: yy, "text-anchor": "middle", "font-size": size, "font-weight": 700, fill: fill || "#111", "font-family": F, textLength: s.length * (size * 0.43) > 900 ? 900 : null, lengthAdjust: "spacingAndGlyphs" }, s)); yy += size >= 34 ? 44 : 42; };
+    if (c.tshirt) bottom("Prévoir Tee-Shirt " + c.tshirt.toUpperCase() + " !", 34);
+    if (c.tableLine) bottom(c.tableLine, c.tshirt && c.carpool ? 28 : 32, GREEN);
+    if (c.carpool) bottom(c.carpool, c.tshirt && c.tableLine ? 28 : 32, GREEN);
     return svg;
   }
 
@@ -166,11 +170,19 @@
     const cut = teamLbl.indexOf(" «") > 0 ? teamLbl.indexOf(" «") : teamLbl.length > 24 ? teamLbl.lastIndexOf(" ", 24) : -1;
     const lab = cut > 0 ? [teamLbl.slice(0, cut).trim(), teamLbl.slice(cut).trim()] : [teamLbl, ""];
     const names = convoked.map(p => ({ id: p.id, p }));
+    // table de marque (match à domicile) : postes et joueurs, gardés dans la convocation
+    const isHome = e.home_away !== "exterieur";
+    const DEFAULT_ROLES = ["Marqueur", "Chronométreur", "24 secondes"];
+    const tableRows = (() => { const t0 = Array.isArray(C.table) ? C.table.slice() : []; for (const r of DEFAULT_ROLES) if (!t0.some(x => x.role === r)) t0.push({ role: r, pid: null }); return t0; })();
+    const tableOn = isHome ? tableRows.filter(x => x.pid && P[x.pid]) : [];
+    const tableOf = Object.fromEntries(tableOn.map(x => [x.pid, x.role]));
+    const setTable = async rows => { await saveC({ table: rows.filter(x => x.pid || !DEFAULT_ROLES.includes(x.role)) }); rerender(); };
     const addrDefault = venue ? [venue.address, venue.city].filter(Boolean).join(", ") : "";
     const addrNow = C.address != null ? C.address : addrDefault;
     const away = e.home_away === "exterieur", carpoolOn = C.carpool != null ? !!C.carpool : away;
     const L = layout(convoked, boxes);
-    const cdata = { title: C.title + (C.num ? " N°" + C.num : ""), dateLine, club_short: C.club_short, club_label1: lab[0], club_label2: lab[1],
+    const tableLine = tableOn.length ? "Table de marque : " + tableOn.map(x => x.role + " " + P[x.pid].first_name).join(" · ") : "";
+    const cdata = { tableLine, title: C.title + (C.num ? " N°" + C.num : ""), dateLine, club_short: C.club_short, club_label1: lab[0], club_label2: lab[1],
       oppName: opp, oppInitials: opp.split(/\s+/).map(w => w.charAt(0)).join("").slice(0, 3).toUpperCase(),
       venueLine: [venue ? venue.name : e.venue_name, K().hm(e.starts_at)].filter(Boolean).join(" - "), address: addrNow, carpool: carpoolOn ? (C.carpool_text || CARPOOL) : "", meetLine: C.meetup ? "RDV à " + C.meetup : "", snack: C.snack, tshirt: C.tshirt };
     cdata.myLogo = await LogoUtil.dataUrl(LogoUtil.teamLogoSrc(t ? t.team : null)).catch(() => null);
@@ -220,7 +232,7 @@
         convoked.length > 12 ? h("p", { class: "sub", style: "color:#ef5b50" }, "Attention : une feuille de match accepte 12 joueurs au maximum, tu en as " + convoked.length + " de convoqués.") : null,
         roster.length ? roster.map(p => { const a = mine[p.id] && !mine[p.id].deleted_at ? mine[p.id] : null;
           return h("div", { class: "att-row sheet" },
-            h("div", { class: "att-name" }, h("span", { class: "num" }, p.jersey != null ? p.jersey : ""), h("span", {}, p.first_name + (p.last_name ? " " + p.last_name : "")), a && a.source === "lien" ? h("span", { class: "pill ok" }, "lien") : null, p.position ? h("span", { class: "sub" }, p.position) : null),
+            h("div", { class: "att-name" }, h("span", { class: "num" }, p.jersey != null ? p.jersey : ""), h("span", {}, p.first_name + (p.last_name ? " " + p.last_name : "")), a && a.source === "lien" ? h("span", { class: "pill ok" }, "lien") : null, tableOf[p.id] ? h("span", { class: "pill warn" }, "Table : " + tableOf[p.id]) : null, p.position ? h("span", { class: "sub" }, p.position) : null),
             h("div", { class: "btns" },
               a && (a.status === "peut_etre" || a.status === "present") ? h("button", { type: "button", class: "small " + (a.convoked ? "" : "ghost"), title: "Apparaît (ou non) dans les cases de la convocation", onclick: () => toggleConvoked(p) }, a.convoked ? "Convoqué ✓" : "Non convoqué") : null,
               h("div", { class: "seg" }, Object.entries(ST).map(([k, l]) => h("button", { type: "button", class: "segb " + (k === "absent" ? "absent" : "") + (a && a.status === k ? " on" : ""), onclick: () => setStatus(p, k) }, l)))));
@@ -230,6 +242,14 @@
           noAnswer.length ? h("button", { class: "small ghost", onclick: async () => { for (const p of noAnswer) { const id = await sha("avail:" + e.id + ":" + p.id), old = mine[p.id];
             await DB.save("match_availability", old ? { ...old, status: "absent", convoked: false, deleted_at: null } : { id, event_id: e.id, player_id: p.id, status: "absent", convoked: false, source: "coach", answered_at: new Date().toISOString() }); } rerender(); } }, "Le reste : absents") : null),
         paste.msg ? h("p", { class: "sub" }, paste.msg) : null),
+
+      isHome ? [h("h3", {}, "Table de marque"), h("section", { class: "card" },
+        h("p", { class: "sub" }, "Les joueurs qui tiennent la table ce jour-là. Ils apparaissent en bas de la convocation et à côté de leur nom dans la liste des présences."),
+        tableRows.map((r, i) => { const sel = h("select", {}, h("option", { value: "" }, "— choisir un joueur —"), roster.map(p => h("option", { value: p.id, selected: r.pid === p.id }, (p.jersey != null ? "#" + p.jersey + " " : "") + p.first_name + (p.last_name ? " " + p.last_name : "") + (mine[p.id] && !mine[p.id].deleted_at && mine[p.id].convoked ? " (convoqué)" : ""))));
+          sel.addEventListener("change", () => { const nt = tableRows.map(x => ({ ...x })); nt[i].pid = sel.value || null; setTable(nt); });
+          return h("div", { class: "trow" }, h("div", { class: "tlab" }, r.role), sel, !DEFAULT_ROLES.includes(r.role) ? h("button", { type: "button", class: "small ghost danger icononly", "aria-label": "Retirer le poste", onclick: () => setTable(tableRows.filter((_, k) => k !== i)) }, Icon("trash", 16)) : null); }),
+        (() => { const i = h("input", { placeholder: "Ajouter un poste (ex. Tablette, Buvette)" }); const add = () => { const v = i.value.trim(); if (v && !tableRows.some(x => x.role === v)) setTable([...tableRows, { role: v, pid: null }]); };
+          i.addEventListener("keydown", ev => { if (ev.key === "Enter") { ev.preventDefault(); add(); } }); return h("div", { class: "btns wrap" }, i, h("button", { type: "button", class: "small", onclick: add }, Icon("plus", 16), "Ajouter")); })())] : null,
 
       h("h3", {}, "Convocation"),
       h("section", { class: "card" },
