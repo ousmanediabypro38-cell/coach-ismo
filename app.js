@@ -140,7 +140,7 @@
     root.replaceChildren();
     if (view.name === "home") root.append(...(await homeView()).flat(Infinity).filter(x => x != null && x !== false));
     else if (view.name === "team") root.append(...(await teamView(view.id)).flat(Infinity).filter(x => x != null && x !== false));
-    else if (view.name === "teamForm") root.append(teamForm());
+    else if (view.name === "teamForm") root.append(await teamForm(view));
     else if (view.name === "playerForm") root.append(await playerForm(view.tsId, view.mId));
     else if (window.Views && Views[view.name]) root.append(...[].concat(await Views[view.name](view)).flat(Infinity).filter(x => x != null && x !== false));
     document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.tab === (TAB[view.name] || "teams")));
@@ -188,15 +188,21 @@
     ];
   }
 
-  function teamForm() {
-    const name = h("input", { required: true, placeholder: "ex. Seniors DM3 (pré D2)" });
-    const cat = h("input", { placeholder: "ex. Seniors, U18F…" });
-    const club = h("input", { placeholder: "ex. Eybens" });
+  async function teamForm(v) {
+    const ts0 = v && v.id ? await DB.get("team_seasons", v.id) : null, t0 = ts0 ? await DB.get("teams", ts0.team_id) : null;
+    const name = h("input", { required: true, placeholder: "ex. Seniors DM3 (pré D2)", value: t0 ? t0.name : "" });
+    const cat = h("input", { placeholder: "ex. Seniors, U18F…", value: t0 ? t0.category || "" : "" });
+    const club = h("input", { placeholder: "ex. Eybens", value: t0 ? t0.club || "" : "" });
     const season = h("input", { required: true, value: defaultSeason });
-    const role = h("select", {}, ["principal", "assistant", "joueur"].map(r => h("option", { value: r }, r === "principal" ? "Coach principal" : r === "assistant" ? "Assistant" : "Joueur")));
-    const prio = h("select", {}, [1, 2, 3, 4, 5, 6].map(n => h("option", { value: n, selected: n === 3 }, "P" + n)));
+    const role = h("select", {}, ["principal", "assistant", "joueur"].map(r => h("option", { value: r, selected: ts0 ? ts0.role === r : false }, r === "principal" ? "Coach principal" : r === "assistant" ? "Assistant" : "Joueur")));
+    const prio = h("select", {}, [1, 2, 3, 4, 5, 6].map(n => h("option", { value: n, selected: n === (ts0 ? ts0.priority || 3 : 3) }, "P" + n)));
     return h("form", { class: "card", onsubmit: async e => {
       e.preventDefault();
+      if (ts0) {
+        await DB.save("teams", { ...t0, name: name.value.trim(), category: cat.value.trim() || null, club: club.value.trim() || null });
+        await DB.save("team_seasons", { ...ts0, role: role.value, priority: +prio.value });
+        toast("Équipe modifiée."); setView({ name: "team", id: ts0.id }); return;
+      }
       const label = season.value.trim();
       let s = (await DB.live("seasons")).find(x => x.label === label);
       if (!s) s = await DB.save("seasons", { label });
@@ -204,11 +210,11 @@
       const ts = await DB.save("team_seasons", { team_id: t.id, season_id: s.id, role: role.value, priority: +prio.value });
       setView({ name: "team", id: ts.id });
     } },
-      h("h2", {}, "Nouvelle équipe"),
-      field("Nom", name), field("Catégorie", cat), field("Club", club), field("Saison", season),
+      h("h2", {}, ts0 ? "Modifier l'équipe" : "Nouvelle équipe"),
+      field("Nom", name), field("Catégorie", cat), field("Club", club), ts0 ? null : field("Saison", season),
       field("Ton rôle", role), field("Priorité (1 = la plus haute)", prio),
       h("button", { type: "submit" }, "Enregistrer"),
-      h("button", { type: "button", class: "ghost", onclick: () => setView({ name: "home" }) }, "Annuler"));
+      h("button", { type: "button", class: "ghost", onclick: () => ts0 ? setView({ name: "team", id: ts0.id }) : setView({ name: "home" }) }, "Annuler"));
   }
 
   const safeUrl = u => { try { const x = new URL(String(u).trim()); return /^https?:$/.test(x.protocol) ? x.href : null; } catch (e) { return null; } };
@@ -243,6 +249,7 @@
       h("p", { class: "sub" }, [team.category, team.club, season.label].filter(Boolean).join(" · ")))),
       h("div", { class: "btns wrap" },
         h("button", { class: "small", onclick: () => setView({ name: "playerForm", tsId }) }, Icon("plus", 18), "Joueur"),
+        h("button", { class: "small ghost", onclick: () => setView({ name: "teamForm", id: tsId }) }, Icon("edit", 18), "Modifier"),
         h("button", { class: "small ghost", onclick: () => setView({ name: "teamLogo", id: tsId }) }, Icon("edit", 18), "Logo"),
         h("button", { class: "small ghost", onclick: () => window.RoutineUtil && RoutineUtil.open(tsId) }, Icon("clipboard", 18), "Routines"),
         h("button", { class: "small ghost", onclick: () => setView({ name: "missionSuivi", tsId }) }, Icon("check", 18), "Missions"),

@@ -4,6 +4,11 @@
   const h = (...a) => U().h(...a);
   const INTENSITY = { legere: "Légère", moyenne: "Moyenne", forte: "Forte" };
   const STATUS = { prevue: "Prévue", faite: "Faite", annulee: "Annulée" };
+  const THEMES = ["Tir", "Finition", "Passe et dribble", "Défense individuelle", "Défense collective", "Rebond", "Transition", "Attaque placée", "Jeu à 5 contre 5", "Physique et athlétique", "Dextérité", "Échauffement", "Récupération"];
+  // Quand un exercice n'a pas de thème, on le range d'après ses mots-clés (c'est affiché ; le thème que tu choisis a toujours priorité).
+  const GUESS = [["Échauffement", /echauff|warm/], ["Tir", /\btirs?\b|shoot|catch|lancer|3 points|trois points/], ["Finition", /finition|lay-?up|dunk|\bcoupe\b|drive/], ["Défense collective", /defense collective|aide|rotation|zone|press/], ["Défense individuelle", /defens|close-?out|1c1|1 contre 1|slide|stopper/], ["Rebond", /rebond|box ?out/], ["Transition", /transition|contre-?attaque|montee|\b3 ?c ?2|2 ?c ?1/], ["Passe et dribble", /passe|dribble|dribl|jonglage|slalom/], ["Attaque placée", /attaque|systeme|pick|ecran|jeu placé|horns|motion/], ["Jeu à 5 contre 5", /5 ?c ?5|5 contre 5|match|oppos|jeu libre/], ["Physique et athlétique", /physique|echelle|gainage|vitesse|force|course|sprint|plio|souplesse|etirement/], ["Dextérité", /dexterite|reflexe|tennis|coordination|rythme/], ["Récupération", /recup|retour au calme/]];
+  const norm0 = s => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const themeOf = x => { if (x.theme) return x.theme; const t = norm0([x.title, x.systems, x.description].join(" ")); const g = GUESS.find(([, re]) => re.test(t)); return g ? g[0] : (x.kind === "echauffement" ? "Échauffement" : x.kind === "physique" ? "Physique et athlétique" : "Sans thème"); };
   const KINDS = { physique: "Préparation physique", echauffement: "Échauffement", exercice: "Exercice", jeu: "Phase de jeu", autre: "Autre" };
   const ATT = { present: "Présent", absent: "Absent", blesse: "Blessé" };
   const GROUPS = ["1", "2", "3"];
@@ -299,6 +304,8 @@
     const list = all.filter(x => (!state.lib.kind || x.kind === state.lib.kind)
       && (!q || [x.title, x.setup, x.description, x.coaching_points, x.variants, x.systems, x.material].some(t => (t || "").toLowerCase().includes(q))))
       .sort((a, b) => a.title.localeCompare(b.title));
+    const groups = {}; for (const x of list) (groups[themeOf(x)] = groups[themeOf(x)] || []).push(x);
+    const order = [...THEMES, ...Object.keys(groups).filter(k => !THEMES.includes(k) && k !== "Sans thème"), "Sans thème"].filter(k => groups[k]);
     const search = h("input", { type: "search", placeholder: "Chercher un exercice, un système, du matériel…", value: state.lib.q });
     search.addEventListener("change", () => { state.lib.q = search.value; U().setView({ name: "library" }); });
     const kindChip = (k, l) => h("button", { class: "chip" + (state.lib.kind === k ? " on" : ""), onclick: () => { state.lib.kind = k; U().setView({ name: "library" }); } }, l);
@@ -308,10 +315,10 @@
       tabs("library"),
       search,
       h("div", { class: "chips filter" }, kindChip("", "Tous"), Object.entries(KINDS).map(([k, l]) => kindChip(k, l))),
-      list.length ? list.map(x => h("button", { class: "item btnitem", onclick: () => U().setView({ name: "exerciseForm", id: x.id }) },
+      list.length ? order.map(k => [h("h3", { class: "themehead" }, k + " ", h("span", { class: "sub" }, "(" + groups[k].length + ")")), h("section", { class: "card" }, groups[k].map(x => h("button", { class: "item btnitem", onclick: () => U().setView({ name: "exerciseForm", id: x.id }) },
         h("div", { style: "flex:1;min-width:0" }, h("strong", {}, x.title),
           h("div", { class: "sub" }, [x.systems, x.material].filter(Boolean).join(" — ") || (x.description || "").slice(0, 90))),
-        x.kind ? h("span", { class: "kind k-" + x.kind }, KINDS[x.kind]) : null))
+        x.kind ? h("span", { class: "kind k-" + x.kind }, KINDS[x.kind]) : null)))])
         : U().empty("clipboard", all.length ? "Aucun résultat" : "Aucun exercice enregistré",
           all.length ? "Essaie un autre mot ou enlève le filtre." : "Crée un exercice ici, ou coche « Enregistrer aussi dans la bibliothèque » quand tu écris un bloc de séance. Tu pourras le reprendre en un geste.",
           all.length ? null : h("button", { onclick: () => U().setView({ name: "exerciseForm" }) }, Icon("plus", 18), "Créer un exercice")),
@@ -321,13 +328,15 @@
   async function exerciseForm(v) {
     const old = v.id ? await DB.get("exercises", v.id) : null;
     const f = detailFields(old || {});
+    const theme = h("input", { list: "themelist", value: old && old.theme || "", placeholder: "Auto : " + (old ? themeOf({ ...old, theme: null }) : "choisis ou écris un thème") });
+    const dl = h("datalist", { id: "themelist" }, THEMES.map(t => h("option", { value: t })));
     return h("form", { class: "card", onsubmit: async e => {
       e.preventDefault();
-      const d = f.read(); if (!d.title) return;
+      const d = f.read(); if (!d.title) return; d.theme = theme.value.trim() || null;
       await DB.save("exercises", old ? { ...old, ...d } : { ...d });
       U().setView({ name: "library" });
     } },
-      h("h2", {}, old ? "Modifier l'exercice" : "Nouvel exercice"), f.nodes,
+      h("h2", {}, old ? "Modifier l'exercice" : "Nouvel exercice"), U().field("Thème (pour le classement)", theme), dl, f.nodes,
       h("button", { type: "submit" }, "Enregistrer"),
       h("button", { type: "button", class: "ghost", onclick: () => U().setView({ name: "library" }) }, "Annuler"),
       old ? h("button", { type: "button", class: "ghost danger", onclick: async () => {

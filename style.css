@@ -456,3 +456,4 @@ details.mini { margin:14px 0; } details.mini[open] > summary { margin-bottom:8px
 
 @media (max-width:640px) { .sct > div { white-space:normal; } .scd { width:70px; } }
 .sct > div + div { margin-top:4px; }
+.themehead { margin:22px 0 8px; } .themehead .sub { font-weight:400; font-size:.9rem; }
