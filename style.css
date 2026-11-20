@@ -425,3 +425,34 @@ pre.diag { white-space:pre-wrap; word-break:break-word; font-size:.72rem; backgr
 .scrow { display:flex; align-items:center; gap:12px; } .scrow.mine { background:var(--green-soft); border-radius:10px; }
 .scd { width:84px; flex:none; font-size:.85rem; } .sct { flex:1; min-width:0; } .sct > div { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .scs { display:flex; align-items:center; gap:8px; flex:none; }
+
+/* ---------- v45 : rythme et respiration (espacements réguliers, ni trop serré ni trop vide) ---------- */
+.card + .card, .card + .tbl, .card + .row, .card + .btns, .card + .kpis, .card + details, .card + .subcard, .card + p { margin-top:16px; }
+.accL, .accR { display:flex; flex-direction:column; gap:16px; min-width:0; }
+.accL > h3, .accR > h3 { margin:8px 0 -6px; }
+.accL > .hero { margin-bottom:0; }
+h3 { margin:22px 0 10px; }
+.btns { gap:10px; } .btns.wrap { gap:10px; margin:14px 0; }
+.card > h3.tight + .sub, .card > .row + .sub { margin-top:6px; }
+.card .sub + label, .card .sub + .field { margin-top:14px; }
+.card p.sub { margin:6px 0 10px; }
+.card .item:last-child { border-bottom:0; }
+details.mini { margin:14px 0; } details.mini[open] > summary { margin-bottom:8px; }
+.subcard { margin:14px 0; }
+.stats th, .stats td { padding:9px 8px; }
+.scg { padding:16px 2px 4px; }
+.scrow { padding:12px 8px; }
+.tiles { gap:14px; }
+.item { padding:14px 8px; }
+@media (max-width:640px) {
+  .card { padding:16px; } .accL, .accR { gap:14px; }
+  .row h2 { font-size:1.8rem; } h3 { margin:18px 0 8px; }
+  .item { padding:12px 4px; } .stats th, .stats td { padding:8px 6px; }
+}
+@media (max-width:900px) {
+  .nav { overflow-x:auto; scrollbar-width:none; gap:2px; } .nav::-webkit-scrollbar { display:none; }
+  .nav button { flex:0 0 auto; width:auto; min-width:76px; }
+}
+
+@media (max-width:640px) { .sct > div { white-space:normal; } .scd { width:70px; } }
+.sct > div + div { margin-top:4px; }

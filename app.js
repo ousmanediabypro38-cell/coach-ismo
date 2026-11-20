@@ -144,6 +144,7 @@
     else if (view.name === "playerForm") root.append(await playerForm(view.tsId, view.mId));
     else if (window.Views && Views[view.name]) root.append(...[].concat(await Views[view.name](view)).flat(Infinity).filter(x => x != null && x !== false));
     document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.tab === (TAB[view.name] || "teams")));
+    try { const act = document.querySelector("#tabs button.active"); if (act && getComputedStyle(document.getElementById("tabs")).flexDirection === "row") act.scrollIntoView({ inline: "center", block: "nearest" }); } catch (e) {}
     refreshSyncPill(); backBar();
     lastKey = key; root.style.minHeight = "";
     window.scrollTo(0, keep ? y : 0);
