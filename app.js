@@ -367,7 +367,7 @@
   document.addEventListener("visibilitychange", () => { if (!document.hidden) doSync(false); });
 
   document.querySelectorAll("[data-icon]").forEach(e => e.replaceChildren(Icon(e.dataset.icon, e.closest(".nav") ? 22 : 18)));
-  window.UI = { h, field, setView, toast, loadTeams, defaultSeason, empty, goBack };
+  window.UI = { h, field, setView, toast, loadTeams, defaultSeason, empty, goBack, current: () => view };
   start();
   if ("serviceWorker" in navigator) {
     const had = !!navigator.serviceWorker.controller;

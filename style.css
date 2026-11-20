@@ -419,3 +419,4 @@ a.item.btnitem { display:flex; width:100%; }
 .bx input[type=checkbox] { accent-color:#23b574; width:24px; height:24px; }
 .stats tr.me td { background:var(--green-soft); font-weight:700; }
 details.mini { margin:10px 0; } details.mini summary { cursor:pointer; color:var(--mut); font-size:.9rem; padding:6px 0; }
+.subcard { background:var(--s2); border:1px solid var(--line2); border-radius:12px; padding:12px; margin:10px 0; }
