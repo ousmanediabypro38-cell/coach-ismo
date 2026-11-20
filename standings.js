@@ -50,6 +50,7 @@
     let hn = null, an = null;
     for (const [a, b] of PAIRS) { const x = nameFrom(o[a]), y = nameFrom(o[b]); if (x && y && isNaN(+x)) { hn = x; an = y; break; } }
     if (!hn) { const nm = Object.keys(o).filter(k => o[k] && typeof o[k] === "object" && !Array.isArray(o[k]) && nameFrom(o[k])); if (nm.length >= 2) { hn = nameFrom(o[nm[0]]); an = nameFrom(o[nm[1]]); } }
+    if (!hn || !an) { const sk = Object.keys(o).filter(k => /equipe|team|club|nom/i.test(k) && typeof o[k] === "string" && o[k] && isNaN(+o[k]) && !/id|logo|url|date/i.test(k)); if (sk.length >= 2) { hn = o[sk[0]]; an = o[sk[1]]; } }
     if (!hn || !an) return null;
     let hs = null, as = null;
     for (const [a, b] of SC) { if (o[a] != null || o[b] != null) { hs = numOr(o[a]); as = numOr(o[b]); break; } }
@@ -103,12 +104,11 @@
       json = await r.json();
     } catch (e) { if (manual) U().toast("Classement automatique impossible (" + (e.message || e) + "). Tu peux le saisir à la main."); return false; }
     try { window.__standingsRaw = json; } catch (e) {}
-    const rows = parse(json);
-    if (!rows && json && (json.degraded || (Array.isArray(json.classements) && !json.classements.length))) { if (manual) U().toast("La poule n° " + id + " existe mais renvoie un classement vide. Vérifie que c'est bien le numéro de la poule (le lien contient /poules/…), pas celui du comité ou de l'équipe."); return false; }
-    if (!rows) { try { window.__standingsRaw = json; } catch (e) {} if (manual) U().toast("Réponse reçue mais format non reconnu. Touche « Copier le diagnostic »."); return false; }
-    // Gardé uniquement sur cet appareil (pas synchronisé) : évite les « modifications en double » entre tablette et PC.
-    const s = summary(rows, meOf(ts, team));
-    await DB.setMeta("standings_" + ts.id, { rows, rank: s, at: new Date().toISOString(), matches: parseMatches(json) || [] });
+    const rows = parse(json), matches = parseMatches(json) || [];
+    const sample = (() => { try { const o = {}; for (const k of Object.keys(json || {}).slice(0, 12)) { const v = json[k]; o[k] = Array.isArray(v) ? "[" + v.length + " éléments] " + JSON.stringify(v[0] || null).slice(0, 700) : (typeof v === "object" && v ? "{" + Object.keys(v).slice(0, 8).join(",") + "}" : v); } return JSON.stringify(o, null, 1).slice(0, 2400); } catch (e) { return ""; } })();
+    if (!rows && !matches.length) { await DB.setMeta("standings_" + ts.id, { rows: [], rank: null, at: new Date().toISOString(), matches: [], sample }); if (manual) U().toast(json && (json.degraded || (Array.isArray(json.classements) && !json.classements.length)) ? "La poule n° " + id + " renvoie un classement vide. Vérifie le numéro (lien avec ?poule=…)." : "Réponse reçue mais format non reconnu : ouvre « Diagnostic » sous le classement."); return false; }
+    const s = rows ? summary(rows, meOf(ts, team)) : null;
+    await DB.setMeta("standings_" + ts.id, { rows: rows || [], rank: s, at: new Date().toISOString(), matches, sample });
     if (manual) U().toast(s ? "Classement mis à jour : " + s : "Classement mis à jour. Indique le nom de ton équipe pour voir ta position.");
     return true;
   }
@@ -145,6 +145,9 @@
           h("button", { class: "small", onclick: async () => { const c = await DB.get("events", t.e.id); if (c.score_us != null) { U().toast("Ce match a déjà un score."); return; } c.score_us = t.us; c.score_them = t.them; c.status = "joue"; await DB.save("events", c); U().toast("Score reporté."); rerender(); } }, "Reporter")))) : null,
       cal.length ? h("details", { class: "mini" }, h("summary", {}, "Calendrier et résultats de la poule (" + cal.length + ")"),
         h("div", { class: "tbl" }, h("table", { class: "stats" }, h("tbody", {}, cal.map(m => h("tr", { class: mk && (norm(m.home).includes(mk) || norm(m.away).includes(mk)) ? "me" : "" }, h("td", {}, fmtD(m.date) || m.raw || ""), h("td", {}, m.home), h("td", { class: "r strong" }, m.played ? m.hs + " – " + m.as : "à venir"), h("td", {}, m.away))))))) : null,
+      h("details", { class: "mini" }, h("summary", {}, "Diagnostic (si le calendrier n'apparaît pas)"),
+        h("p", { class: "sub" }, "Matchs lus : " + cal.length + " · lignes de classement lues : " + rows.length + ". Fais une capture de ce bloc et envoie-la-moi."),
+        h("pre", { class: "diag" }, st.sample || "Touche d'abord « Mettre à jour maintenant ».")),
       U().field("Numéro de la poule (ou colle le lien de la poule)", poule), U().field("Nom de ton équipe dans le classement", me),
       h("details", { class: "mini" }, h("summary", {}, "Saisie manuelle et lien"), U().field("Position et bilan", rank), U().field("Lien de la page classement", url)),
       h("div", { class: "btns wrap" },

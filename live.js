@@ -2,7 +2,7 @@
 (function () {
   const h = (...a) => window.UI.h(...a), U = () => window.UI;
   const BASE = "https://ffbb-api.desimone.fr/api/v1/";
-  const state = { at: 0, list: [], err: null };
+  const state = { at: 0, list: [], err: null, msg: null };
   let timer = null;
 
   async function fetchLives() {
@@ -29,8 +29,10 @@
     return { total: all.length, mine: state.list.length };
   }
   async function test() {
-    try { const r = await refresh(); changed(); return r.total ? r.total + " matchs en direct sur la FFBB, dont " + r.mine + " dans tes poules." : "Aucun match en direct trouvé pour l'instant (ou format non reconnu : touche « Copier le diagnostic »)."; }
-    catch (e) { return "Scores en direct indisponibles (" + (e.message || e) + ")."; }
+    let msg;
+    try { const r = await refresh(); msg = r.total ? r.total + " matchs en direct sur la FFBB, dont " + r.mine + " dans tes poules." : "Aucun match en direct trouvé pour l'instant."; }
+    catch (e) { msg = "Scores en direct indisponibles (" + (e.message || e) + ")."; }
+    state.msg = msg; state.at = Date.now(); changed(); return msg;
   }
   function changed() { const v = U().current && U().current(); if (v && v.name === "accueil" && !document.querySelector("#app input:focus, #app textarea:focus")) U().setView(v); }
   // On n'interroge l'API que le jour d'un match (de 1 h avant à 3 h après le coup d'envoi).
@@ -39,8 +41,13 @@
     if (document.hidden || !navigator.onLine) return;
     try { if (!(await matchWindow())) { if (state.list.length) { state.list = []; changed(); } return; } await refresh(); changed(); } catch (e) { state.err = e; }
   }
-  function card() {
-    if (!state.list.length || Date.now() - state.at > 5 * 60e3) return null;
+  function card(anyPoule) {
+    if (!state.list.length || Date.now() - state.at > 5 * 60e3) {
+      if (!anyPoule) return null;
+      const hh = state.at ? new Date(state.at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : null;
+      return h("section", { class: "card" }, h("div", { class: "row" }, h("div", { style: "flex:1;min-width:0" }, h("strong", {}, "Scores en direct"), h("div", { class: "sub" }, state.msg ? state.msg + " (" + hh + ")" : "Se vérifie tout seul le jour d'un match.")),
+        h("button", { class: "small ghost", onclick: async e => { e.currentTarget.disabled = true; const m = await test(); U().toast(m); } }, Icon("refresh", 16), "Vérifier")));
+    }
     return [h("h3", {}, "En direct"), h("section", { class: "card" }, state.list.map(m => h("div", { class: "item" }, h("div", { style: "flex:1;min-width:0" }, h("strong", {}, m.home + "  " + (m.hs ?? "–") + " – " + (m.as ?? "–") + "  " + m.away)), h("span", { class: "pill ok" }, "direct"))),
       h("p", { class: "sub" }, "Source FFBB, indicatif : le score n'apparaît que si la table de marque l'envoie en direct."))];
   }

@@ -60,7 +60,7 @@
       h("div", { class: "greet" }, h("h1", {}, hello), h("p", { class: "sub" }, dateTxt)),
       confl.length ? h("button", { class: "card warnbox btnitem", onclick: () => U().setView({ name: "conflicts" }) }, h("strong", {}, confl.length + " modification" + (confl.length > 1 ? "s" : "") + " en double à trancher"), h("span", { class: "sub" }, "Ouvrir les conflits")) : null,
       h("div", { class: "acc2" }, h("div", { class: "accL" },
-      window.Live ? Live.card() : null,
+      window.Live ? Live.card(teams.some(x => x.ts.standings_poule)) : null,
       hero,
       window.Backup ? await Backup.banner(rerender) : null,
       teams.some(x => rankOf(x) || x.ts.standings_url) ? [h("h3", {}, "Classements"), h("section", { class: "card" }, teams.filter(x => rankOf(x) || x.ts.standings_url).map(x => {
@@ -88,7 +88,7 @@
       ),
       ),
       window.Backup ? await Backup.card(rerender) : null,
-      h("p", { class: "sub", style: "text-align:center;margin-top:18px" }, "COACH ISMO · version 40"),
+      h("p", { class: "sub", style: "text-align:center;margin-top:18px" }, "COACH ISMO · version 41"),
     ];
   }
   Object.assign(window.Views, { accueil: view });

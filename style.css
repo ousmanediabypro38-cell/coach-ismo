@@ -420,3 +420,4 @@ a.item.btnitem { display:flex; width:100%; }
 .stats tr.me td { background:var(--green-soft); font-weight:700; }
 details.mini { margin:10px 0; } details.mini summary { cursor:pointer; color:var(--mut); font-size:.9rem; padding:6px 0; }
 .subcard { background:var(--s2); border:1px solid var(--line2); border-radius:12px; padding:12px; margin:10px 0; }
+pre.diag { white-space:pre-wrap; word-break:break-word; font-size:.72rem; background:var(--s2); border:1px solid var(--line2); border-radius:10px; padding:10px; max-height:320px; overflow:auto; }
