@@ -108,13 +108,13 @@
   const fullName = p => [p.first_name, p.last_name].filter(Boolean).join(" ");
 
   // ---------- écrans ----------
-  const TAB = { accueil: "accueil", routines: "teams", missions: "cal", boxEntry: "cal", missionBank: "teams", missionSuivi: "teams", routine: "teams", routineEdit: "teams", home: "teams", team: "teams", teamForm: "teams", playerForm: "teams", cal: "cal", event: "cal", eventForm: "cal", import: "cal", conflicts: "conflicts", carnet: "carnet", session: "carnet", sessionForm: "carnet", library: "carnet", exerciseForm: "carnet", importJson: "carnet", venues: "cal", venue: "cal", venueForm: "cal", oussou: "oussou", note: "oussou", noteForm: "oussou", match: "cal", playtime: "cal", player: "teams", playerPdf: "teams", playbook: "playbook", playEntry: "playbook", playForm: "playbook", playDiagram: "playbook", convoc: "cal", teamLogo: "teams", claudePrep: "accueil", formations: "formation", formation: "formation", formationForm: "formation", formationItem: "formation" };
+  const TAB = { accueil: "accueil", scores: "scores", routines: "teams", missions: "cal", boxEntry: "cal", missionBank: "teams", missionSuivi: "teams", routine: "teams", routineEdit: "teams", home: "teams", team: "teams", teamForm: "teams", playerForm: "teams", cal: "cal", event: "cal", eventForm: "cal", import: "cal", conflicts: "conflicts", carnet: "carnet", session: "carnet", sessionForm: "carnet", library: "carnet", exerciseForm: "carnet", importJson: "carnet", venues: "cal", venue: "cal", venueForm: "cal", oussou: "oussou", note: "oussou", noteForm: "oussou", match: "cal", playtime: "cal", player: "teams", playerPdf: "teams", playbook: "playbook", playEntry: "playbook", playForm: "playbook", playDiagram: "playbook", convoc: "cal", teamLogo: "teams", claudePrep: "accueil", formations: "formation", formation: "formation", formationForm: "formation", formationItem: "formation" };
   function empty(icon, title, text, action) { return h("div", { class: "empty" }, Icon(icon, 34), h("strong", {}, title), h("p", {}, text), action || null); }
   const app = () => $("app");
   // Même écran redessiné (bouton, présence, case cochée…) : on garde la position de défilement. Autre écran : retour en haut.
   let lastKey = null;
   const viewKey = v => [v.name, v.id, v.tsId, v.mId].join("|");
-  const stack = [], ROOTS = ["accueil", "home", "cal", "conflicts", "carnet", "playbook", "formations", "oussou"];
+  const stack = [], ROOTS = ["accueil", "scores", "home", "cal", "conflicts", "carnet", "playbook", "formations", "oussou"];
   function setView(v, fromPop) {
     if (!fromPop && view && viewKey(view) !== viewKey(v)) { stack.push(view); if (stack.length > 60) stack.shift(); try { history.pushState({ n: stack.length }, ""); } catch (e) {} }
     view = v; return render();

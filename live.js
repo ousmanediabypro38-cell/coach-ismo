@@ -2,7 +2,7 @@
 (function () {
   const h = (...a) => window.UI.h(...a), U = () => window.UI;
   const BASE = "https://ffbb-api.desimone.fr/api/v1/";
-  const state = { at: 0, list: [], err: null, msg: null };
+  const state = { at: 0, list: [], all: [], err: null, msg: null };
   let timer = null;
 
   async function fetchLives() {
@@ -13,24 +13,22 @@
     }
     throw last || new Error("indisponible");
   }
+  // Seuls les matchs de TES équipes (nom du club, ex. EYBENS) sont gardés : pas les matchs des autres poules ni des adversaires entre eux.
   async function keys() {
     const [ts, teams] = await Promise.all([DB.live("team_seasons"), DB.live("teams")]), S = window.Standings, set = new Set();
-    for (const x of ts) {
-      const t = teams.find(q => q.id === x.team_id), me = S.norm(S.meOf(x, t)); if (me) set.add(me);
-      if (S.pouleId(x.standings_poule)) { const st = await S.stored(x); for (const r of st.rows || []) { const w = S.norm(r.name); if (w) set.add(w); } }
-    }
+    for (const x of ts) { const t = teams.find(q => q.id === x.team_id), me = (S.norm(S.meOf(x, t)).trim() || S.norm((t && t.name || "").split(/[\s(]/)[0]).trim()); if (me.length >= 4) set.add(me); }
     return { set, ts };
   }
   async function refresh() {
     const json = await fetchLives(), all = window.Standings.findMatches(json, 0) || [];
     const { set } = await keys(), N = window.Standings.norm;
-    const mine = all.filter(m => { const a = N(m.home), b = N(m.away); return [...set].some(k => k && (a.includes(k) || k.includes(a) || b.includes(k) || k.includes(b))); });
-    state.list = mine.filter(m => m.hs != null || m.as != null || m.live); state.at = Date.now(); state.err = null;
+    const mine = all.filter(m => { const a = N(m.home), b = N(m.away); return [...set].some(k => a.includes(k) || b.includes(k)); });
+    state.all = all; state.list = mine.filter(m => m.hs != null || m.as != null || m.live); state.at = Date.now(); state.err = null;
     return { total: all.length, mine: state.list.length };
   }
   async function test() {
     let msg;
-    try { const r = await refresh(); msg = r.total ? r.total + " matchs en direct sur la FFBB, dont " + r.mine + " dans tes poules." : "Aucun match en direct trouvé pour l'instant."; }
+    try { const r = await refresh(); msg = r.total ? r.mine ? r.mine + " match(s) de tes équipes en direct." : r.total + " matchs en direct en France, aucun de tes équipes." : "Aucun match en direct trouvé pour l'instant."; }
     catch (e) { msg = "Scores en direct indisponibles (" + (e.message || e) + ")."; }
     state.msg = msg; state.at = Date.now(); changed(); return msg;
   }

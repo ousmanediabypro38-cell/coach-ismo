@@ -421,3 +421,7 @@ a.item.btnitem { display:flex; width:100%; }
 details.mini { margin:10px 0; } details.mini summary { cursor:pointer; color:var(--mut); font-size:.9rem; padding:6px 0; }
 .subcard { background:var(--s2); border:1px solid var(--line2); border-radius:12px; padding:12px; margin:10px 0; }
 pre.diag { white-space:pre-wrap; word-break:break-word; font-size:.72rem; background:var(--s2); border:1px solid var(--line2); border-radius:10px; padding:10px; max-height:320px; overflow:auto; }
+.scg { font-size:.8rem; color:var(--mut); font-weight:600; padding:12px 2px 2px; }
+.scrow { display:flex; align-items:center; gap:12px; } .scrow.mine { background:var(--green-soft); border-radius:10px; }
+.scd { width:84px; flex:none; font-size:.85rem; } .sct { flex:1; min-width:0; } .sct > div { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.scs { display:flex; align-items:center; gap:8px; flex:none; }
