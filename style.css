@@ -417,3 +417,5 @@ a.btnlink, a.item.btnitem { display:inline-flex; align-items:center; gap:8px; te
 a.btnlink { border:1px solid var(--line2); border-radius:10px; padding:8px 14px; font-weight:600; font-size:.9rem; }
 a.item.btnitem { display:flex; width:100%; }
 .bx input[type=checkbox] { accent-color:#23b574; width:24px; height:24px; }
+.stats tr.me td { background:var(--green-soft); font-weight:700; }
+details.mini { margin:10px 0; } details.mini summary { cursor:pointer; color:var(--mut); font-size:.9rem; padding:6px 0; }
