@@ -5,7 +5,8 @@
   const EVERY = 6 * 3600 * 1000;
   const norm = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
   const pick = (o, keys) => { for (const k of keys) { if (o && o[k] != null && typeof o[k] !== "object") return o[k]; } return null; };
-  const pouleId = t => { const s = String(t || ""); const m = s.match(/poules?\/(\d+)/i) || s.match(/(\d{3,})/); return m ? m[1] : ""; };
+  // Accepte un numéro seul, ou un lien contenant « /poules/NNN ». Un autre lien (ex. numéro de comité) est refusé.
+  const pouleId = t => { const s = String(t || "").trim(); if (/^\d+$/.test(s)) return s; const m = s.match(/poules?\/(\d+)/i); return m ? m[1] : ""; };
 
   // Cherche, dans une réponse JSON de forme inconnue, le tableau qui ressemble à un classement.
   function findTable(node, depth) {
@@ -58,6 +59,7 @@
       json = await r.json();
     } catch (e) { if (manual) U().toast("Classement automatique impossible (" + (e.message || e) + "). Tu peux le saisir à la main."); return false; }
     const rows = parse(json);
+    if (!rows && json && (json.degraded || (Array.isArray(json.classements) && !json.classements.length))) { if (manual) U().toast("La poule n° " + id + " existe mais renvoie un classement vide. Vérifie que c'est bien le numéro de la poule (le lien contient /poules/…), pas celui du comité ou de l'équipe."); return false; }
     if (!rows) { try { window.__standingsRaw = json; } catch (e) {} if (manual) U().toast("Réponse reçue mais format non reconnu. Touche « Copier le diagnostic »."); return false; }
     const cur = await DB.get("team_seasons", ts.id);
     cur.standings_data = rows; cur.standings_at = new Date().toISOString();
@@ -76,6 +78,7 @@
       const cur = await DB.get("team_seasons", ts.id), u = url.value.trim(); let ok = true;
       if (u) { try { const x = new URL(u); ok = /^https?:$/.test(x.protocol); } catch (e) { ok = false; } }
       if (!ok) { U().toast("Ce lien ne semble pas valide (il doit commencer par https://)."); return null; }
+      if (poule.value.trim() && !pouleId(poule.value)) { U().toast("Je ne trouve pas de numéro de poule dans ce lien. Il doit contenir /poules/ suivi du numéro."); return null; }
       cur.standings_poule = pouleId(poule.value) || null; cur.standings_team = me.value.trim() || null; cur.standings_url = u || null;
       if (rank.value.trim() !== (ts.standings_rank || "")) { cur.standings_rank = rank.value.trim() || null; cur.standings_at = new Date().toISOString(); }
       await DB.save("team_seasons", cur); if (toast) U().toast("Enregistré."); return cur;

@@ -85,7 +85,7 @@
       ),
       ),
       window.Backup ? await Backup.card(rerender) : null,
-      h("p", { class: "sub", style: "text-align:center;margin-top:18px" }, "COACH ISMO · version 36"),
+      h("p", { class: "sub", style: "text-align:center;margin-top:18px" }, "COACH ISMO · version 37"),
     ];
   }
   Object.assign(window.Views, { accueil: view });
