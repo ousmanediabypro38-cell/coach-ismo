@@ -109,6 +109,35 @@
     return h("div", { class: "chartbox" }, svg);
   }
 
+
+  // ---- synthèse d'une saison pour un joueur (aperçu coach + fiche de fin de saison) ----
+  function summary(rows) {
+    const gp = rows.length, A = (a, f) => a.length ? a.reduce((t, x) => t + f(x), 0) / a.length : null;
+    const withP = rows.filter(r => ptsOf(r) != null), withM = rows.filter(r => r.min != null), tr = rows.filter(r => r.tracked);
+    const T = tr.reduce((t, r) => { for (const k of Object.keys(t)) t[k] += r.s[k]; return t; }, zero());
+    const p3 = sum(rows, r => r.tracked ? r.s.tpm : r.box ? r.box.p3 : 0), ft = sum(rows, r => r.tracked ? r.s.ftm : r.box ? r.box.ft : 0);
+    const ptsTot = sum(withP, r => ptsOf(r)), minTot = sum(withM, r => r.min);
+    const hi = withP.reduce((b, r) => !b || ptsOf(r) > ptsOf(b) ? r : b, null);
+    const last = withP.slice(-3), prev = withP.slice(0, -3);
+    const trend = last.length >= 2 && prev.length ? A(last, r => ptsOf(r)) - A(prev, r => ptsOf(r)) : null;
+    const res = rows.filter(r => r.e.score_us != null && r.e.score_them != null);
+    return { gp, starts: rows.filter(r => r.box && r.box.starter).length, ptsTot, ptsAvg: A(withP, r => ptsOf(r)), hi, minAvg: A(withM, r => r.min), minTot,
+      per10: minTot > 0 ? Math.round(100 * sum(withM.filter(r => ptsOf(r) != null), r => ptsOf(r)) / (sum(withM.filter(r => ptsOf(r) != null), r => r.min) / 600)) / 100 : null,
+      p3, ft, foulsAvg: A(rows.filter(r => foulsOf(r) != null), r => foulsOf(r)), fg: pct(T.fgm, T.fga), tp: pct(T.tpm, T.tpa), ftp: pct(T.ftm, T.fta), nTr: tr.length,
+      reb: tr.length ? T.reb / tr.length : null, tov: tr.length ? T.tov / tr.length : null,
+      win: res.filter(r => r.e.score_us > r.e.score_them).length, loss: res.filter(r => r.e.score_us < r.e.score_them).length, trend, withP };
+  }
+  const f1 = v => v == null ? "—" : (Math.round(v * 10) / 10).toString().replace(".", ",");
+  function overview(rows) {
+    const m = summary(rows), tr = m.trend;
+    const items = [["Points / match", f1(m.ptsAvg)], ["Meilleur match", m.hi ? ptsOf(m.hi) + " pts" : "—"], ["Minutes / match", m.minAvg != null ? mmss(m.minAvg) : "—"], ["Points / 10 min", f1(m.per10)],
+      ["Titularisations", m.starts || "—"], ["Paniers à 3 pts", m.p3 || "—"], ["Lancers francs réussis", m.ft || "—"], ["Bilan quand il joue", (m.win + m.loss) ? m.win + " V – " + m.loss + " D" : "—"]];
+    return h("section", { class: "card ovw" }, h("h3", { class: "tight" }, "Aperçu coach"),
+      h("div", { class: "kpis" }, items.map(([l, v]) => h("div", { class: "kpi" }, h("b", {}, v), h("span", {}, l)))),
+      tr != null ? h("p", { class: "trend " + (tr > 0.5 ? "up" : tr < -0.5 ? "dn" : "eq") }, (tr > 0.5 ? "▲ En progression : " : tr < -0.5 ? "▼ En baisse : " : "● Stable : ") + "3 derniers matchs " + (tr > 0 ? "+" : "") + f1(tr) + " pt vs le début de saison.") : h("p", { class: "sub" }, "La tendance apparaît dès 4 matchs avec des points saisis."),
+      m.nTr ? h("p", { class: "sub" }, "Adresse (matchs suivis en direct, " + m.nTr + ") : tirs " + (m.fg ?? "—") + " % · 3 pts " + (m.tp ?? "—") + " % · LF " + (m.ftp ?? "—") + " %.") : h("p", { class: "sub" }, "Les pourcentages d'adresse demandent un suivi en direct (la feuille de match ne donne que les tirs réussis)."));
+  }
+
   async function playerSection(p, tsId, rerender) {
     const rows = await forPlayer(p.id, tsId);
     if (!rows.length) return [h("h3", {}, "Matchs et statistiques"), h("section", { class: "card" }, h("p", { class: "sub" }, "Aucun match pour l'instant. Les matchs où ce joueur est convoqué ou utilisé apparaissent ici, avec ses statistiques saisies depuis l'écran terrain."))];
@@ -119,6 +148,7 @@
     const avg = (v, n) => n ? (Math.round(10 * v / n) / 10).toString().replace(".", ",") : "—";
     return [
       h("h3", {}, "Matchs et statistiques (" + rows.length + ")"),
+      overview(rows),
       h("section", { class: "card" },
         h("div", { class: "kpis" },
           [["Matchs", rows.length], ["Min / match", mins.length ? mmss(sum(mins, r => r.min) / mins.length) : "—"], ["Pts / match", avg(sum(rows.filter(r => ptsOf(r) != null), r => ptsOf(r)), rows.filter(r => ptsOf(r) != null).length)], ["Tirs", pctTxt(T.fgm, T.fga)], ["3 pts", pctTxt(T.tpm, T.tpa)], ["LF", pctTxt(T.ftm, T.fta)], ["Reb / match", avg(T.reb, tr.length)], ["BP / match", avg(T.tov, tr.length)], ["Fautes / match", avg(sum(rows.filter(r => foulsOf(r) != null), r => foulsOf(r)), rows.filter(r => foulsOf(r) != null).length)]]
@@ -144,5 +174,5 @@
       h("tbody", {}, rows.map(r => h("tr", {}, h("td", {}, fd(r.e.starts_at) + " · " + (r.e.opponent || "?")), h("td", {}, r.min != null ? mmss(r.min) : "—"), h("td", {}, r.tracked ? r.s.pts : "—"), h("td", {}, r.tracked ? ratio(r.s.fgm, r.s.fga) : "—"), h("td", {}, r.tracked ? ratio(r.s.tpm, r.s.tpa) : "—"), h("td", {}, r.tracked ? ratio(r.s.ftm, r.s.fta) : "—"), h("td", {}, r.tracked ? r.s.reb : "—"), h("td", {}, r.tracked ? r.s.tov : "—"), h("td", {}, r.tracked ? r.s.fouls : "—"))))));
   }
 
-  window.StatsUtil = { byPlayer, scoreOf, zero, add, pct, pctTxt, ratio, mmss, matchTable, sheetTable, boxOf, boxPts, forPlayer, playerSection, pdfBlock };
+  window.StatsUtil = { summary, f1, byPlayer, scoreOf, zero, add, pct, pctTxt, ratio, mmss, matchTable, sheetTable, boxOf, boxPts, forPlayer, playerSection, pdfBlock };
 })();

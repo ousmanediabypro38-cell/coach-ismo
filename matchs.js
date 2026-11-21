@@ -111,7 +111,8 @@
     if (e.live) return [...head, await (mode === "terrain" && window.TerrainUtil ? window.TerrainUtil.view(e, P, stints) : liveView(e, P, stints))];
     if (e.squad || stints.length || e.score_us != null || boxes.length) {
       releaseWake();
-      const sv = summaryView(e, players, P, stints);
+      const selIds = window.SuiviUtil ? await window.SuiviUtil.selectedIds(e) : null;
+      const sv = summaryView(e, selIds ? players.filter(p => selIds.includes(p.id)) : players, P, stints, selIds);
       if (window.StatsUtil) { const acts = (await DB.live("match_actions")).filter(a => a.event_id === e.id), tbl = StatsUtil.matchTable(e, P, stints, acts); if (tbl) sv.splice(sv.length - 1, 0, tbl); else if (boxes.length && StatsUtil.sheetTable) { const sh = StatsUtil.sheetTable(e, P, boxes); if (sh) sv.splice(sv.length - 1, 0, sh); } }
       if (window.SuiviUtil) sv.splice(sv.length - 1, 0, h("section", { class: "card" }, h("h3", { class: "tight" }, "Observations des joueurs"),
         await window.SuiviUtil.obsForMatch(e, () => U().setView({ name: "match", id: e.id }))));
@@ -200,12 +201,12 @@
   }
 
   // ---- après le match ----
-  function summaryView(e, players, P, stints) {
+  function summaryView(e, players, P, stints, selIds) {
     const rerender = () => U().setView({ name: "match", id: e.id });
     const by = totals(stints, null);
     const nP = e.nb_periods || 4, maxP = Math.max(nP, ...stints.map(s => s.period), 0);
     const periods = Array.from({ length: maxP }, (_, i) => i + 1);
-    const ids = [...new Set([...(e.squad || []), ...stints.map(s => s.player_id)])].filter(id => P[id]);
+    const ids = [...new Set([...(e.squad || []), ...(selIds || []), ...stints.map(s => s.player_id)])].filter(id => P[id]);
     const rows = ids.map(id => ({ id, p: P[id], t: by[id] || { tot: 0, per: {} } })).sort((a, b) => b.t.tot - a.t.tot);
     const matchSec = periods.reduce((a, q) => a + periodLen(e, q), 0);
 

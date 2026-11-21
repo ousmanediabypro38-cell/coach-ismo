@@ -73,8 +73,18 @@
     return obsPanel({ key: "s:" + s.id, players, ctx: { session_id: s.id }, date: K().dkey(s.starts_at), rerender });
   }
   // Match : les joueurs de la feuille de match (ou tout l'effectif)
+  // Joueurs réellement concernés par un match : feuille de match, passages, stats saisies, sinon convoqués. null = on ne sait pas (tout l'effectif).
+  async function selectedIds(e) {
+    const ids = new Set(e.squad || []);
+    const [bx, st, ac, av] = await Promise.all([DB.live("match_boxscores").catch(() => []), DB.live("match_stints"), DB.live("match_actions"), DB.live("match_availability")]);
+    bx.filter(b => b.event_id === e.id).forEach(b => ids.add(b.player_id));
+    st.filter(b => b.event_id === e.id).forEach(b => ids.add(b.player_id));
+    ac.filter(b => b.event_id === e.id && b.player_id).forEach(b => ids.add(b.player_id));
+    if (!ids.size) av.filter(a => a.event_id === e.id && a.convoked).forEach(a => ids.add(a.player_id));
+    return ids.size ? [...ids] : null;
+  }
   async function obsForMatch(e, rerender) {
-    const players = await playersFor(e.team_season_id, e.squad && e.squad.length ? e.squad : null);
+    const players = await playersFor(e.team_season_id, await selectedIds(e));
     return obsPanel({ key: "m:" + e.id, players, ctx: { event_id: e.id }, date: K().dkey(e.starts_at), rerender });
   }
 
@@ -179,7 +189,8 @@
           p.photo ? h("button", { class: "small ghost danger", onclick: async () => { const cur = await DB.get("players", p.id); cur.photo = null; await DB.save("players", cur); rerender(); } }, "Retirer") : null), photoIn)),
       h("div", { class: "row" }, h("h2", {}, (m.jersey_number != null ? "#" + m.jersey_number + " " : "") + full(p)),
         h("div", { class: "btns" },
-          h("button", { class: "small", onclick: () => U().setView({ name: "playerPdf", tsId: v.tsId, mId: v.mId }) }, Icon("copy", 18), "PDF à partager"),
+          h("button", { class: "small", onclick: () => U().setView({ name: "playerSeason", tsId: v.tsId, mId: v.mId }) }, Icon("copy", 18), "Fiche de saison"),
+          h("button", { class: "small ghost", onclick: () => U().setView({ name: "playerPdf", tsId: v.tsId, mId: v.mId }) }, Icon("copy", 18), "PDF à partager"),
           h("button", { class: "small ghost", onclick: () => U().setView({ name: "claudePrep", subject: "player", target: v.tsId + "|" + p.id }) }, "Préparer pour Claude"),
           h("button", { class: "small ghost", onclick: () => U().setView({ name: "playerForm", tsId: v.tsId, mId: v.mId }) }, Icon("edit", 18), "Identité"))),
       h("p", { class: "sub" }, [p.position, p.birth_year].filter(Boolean).join(" · ") || "Poste et année de naissance dans « Identité »."), playtime,
@@ -277,6 +288,6 @@
     ];
   }
 
-  window.SuiviUtil = { obsForSession, obsForMatch, avatar };
+  window.SuiviUtil = { obsForSession, obsForMatch, avatar, selectedIds };
   Object.assign(window.Views, { player: playerView, playerPdf: pdfView });
 })();

@@ -469,3 +469,6 @@ details.mini { margin:14px 0; } details.mini[open] > summary { margin-bottom:8px
 .bkpis{display:flex;flex-wrap:wrap;gap:12px;margin:16px 0} .bkpis div{flex:1 1 120px;padding:10px 12px;border:1px solid #d8e2dc;border-radius:10px;text-align:center} .bkpis b{display:block;font-size:1.4rem} .bkpis span{font-size:.8rem;color:#5b6b61}
 .bblock{margin:10px 0;padding:10px 14px;border-left:4px solid #157a4e;background:#f4f8f5;break-inside:avoid} .bblock h4{margin:0 0 4px}
 .paper .strong{color:#0f1f17;font-weight:700} .paper table td,.paper table th{color:#1d2a22}
+.bcols{display:grid;grid-template-columns:1fr 1fr;gap:12px} @media (max-width:600px){.bcols{grid-template-columns:1fr}}
+.ovw .trend{margin:10px 0 4px;font-weight:600} .ovw .trend.up{color:#23b574} .ovw .trend.dn{color:#e0a02a} .ovw .trend.eq{color:var(--text)}
+.paper .bhead{margin-top:0} .paper .bkpis b{color:#0f1f17}
