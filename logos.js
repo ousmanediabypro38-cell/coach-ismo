@@ -2,7 +2,7 @@
 (function () {
   const DB = window.DB, U = () => window.UI;
   const h = (...a) => U().h(...a);
-  const PRESETS = { eybens: { src: "logo-eybens.png", name: "Eybens" }, smhep: { src: "logo-smhep.png", name: "SMHEP (entente Saint-Martin-d'Hères / Eybens)" } };
+  const PRESETS = { eybens: { src: "logo-eybens.png", name: "Eybens" }, smh: { src: "logo-smh.png", name: "Saint-Martin-d'Hères (SMH)" }, smhep: { src: "logo-smhep.png", name: "SMHEP (entente Saint-Martin-d'Hères / Eybens)" } };
   const norm = s => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
   async function sha(key) {
     const buf = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(key));
@@ -58,7 +58,7 @@
       h("p", { class: "sub" }, "Le logo apparaît sur les convocations. Par défaut : Eybens pour toutes tes équipes, et SMHEP pour l'U18F-2 (l'équipe de l'entente)."),
       h("div", { class: "logoopts" },
         opt("auto", "Automatique (" + PRESETS[teamLogoKey({ ...team, logo: "auto" })].name + ")", PRESETS[teamLogoKey({ ...team, logo: "auto" })].src),
-        opt("eybens", "Eybens", PRESETS.eybens.src), opt("smhep", "SMHEP", PRESETS.smhep.src),
+        opt("eybens", "Eybens", PRESETS.eybens.src), opt("smhep", "SMHEP", PRESETS.smhep.src), opt("smh", "SMH", PRESETS.smh.src),
         h("button", { type: "button", class: "logoopt" + (custom ? " on" : ""), onclick: () => file.click() }, custom ? img(cur, "logoprev") : h("span", { class: "logoprev auto" }, "+"), h("span", {}, "Une autre image…"))),
       file,
     ];

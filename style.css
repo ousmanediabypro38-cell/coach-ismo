@@ -461,3 +461,11 @@ details.mini { margin:14px 0; } details.mini[open] > summary { margin-bottom:8px
 .trow { display:flex; align-items:center; gap:12px; margin:10px 0; } .trow .tlab { width:140px; flex:none; font-weight:600; } .trow select { flex:1; min-width:0; }
 @media (max-width:640px) { .trow { flex-wrap:wrap; } .trow .tlab { width:100%; } }
 .warnline{color:#e8b04a;font-size:13px;line-height:1.45;margin:6px 0 12px}
+
+/* ---- Bilan de match ---- */
+.bhead{display:flex;align-items:center;gap:16px;padding-bottom:14px;border-bottom:2px solid #157a4e;margin-bottom:6px} .blogo{width:72px;height:72px;object-fit:contain} .bmid{flex:1;min-width:0} .bmid h1{margin:0 0 4px}
+.bscore{text-align:center;padding:8px 16px;border-radius:12px;background:#eef3f0} .bscore b{display:block;font-size:1.9rem;line-height:1.1} .bscore span{font-size:.85rem;color:#5b6b61} .bscore.w b{color:#157a4e} .bscore.l b{color:#b4382f}
+.bchart{width:100%;max-width:560px;height:auto;display:block} .blegend{display:flex;gap:8px;align-items:center;font-size:.85rem;color:#5b6b61} .blegend i{width:12px;height:12px;border-radius:3px;display:inline-block;margin-left:10px} .blegend i.g{background:#157a4e;margin-left:0} .blegend i.o{background:#aab5ae}
+.bkpis{display:flex;flex-wrap:wrap;gap:12px;margin:16px 0} .bkpis div{flex:1 1 120px;padding:10px 12px;border:1px solid #d8e2dc;border-radius:10px;text-align:center} .bkpis b{display:block;font-size:1.4rem} .bkpis span{font-size:.8rem;color:#5b6b61}
+.bblock{margin:10px 0;padding:10px 14px;border-left:4px solid #157a4e;background:#f4f8f5;break-inside:avoid} .bblock h4{margin:0 0 4px}
+.paper .strong{color:#0f1f17;font-weight:700} .paper table td,.paper table th{color:#1d2a22}

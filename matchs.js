@@ -107,7 +107,7 @@
     for (const s of stints) if (!P[s.player_id]) { const p = (await DB.get("players", s.player_id)); if (p) P[s.player_id] = { ...p, jersey: null }; }
     const boxes = (await DB.live("match_boxscores").catch(() => [])).filter(b => b.event_id === e.id);
     for (const b of boxes) if (!P[b.player_id]) { const p = await DB.get("players", b.player_id); if (p) P[b.player_id] = { ...p, jersey: null }; }
-    if (!e.live) head.push(h("div", { class: "btns" }, h("button", { class: "ghost", onclick: () => U().setView({ name: "boxEntry", id: e.id }) }, Icon("clipboard", 18), boxes.length ? "Modifier les stats de la feuille" : "Saisir les stats après match (feuille)")));
+    if (!e.live) head.push(h("div", { class: "btns" }, h("button", { class: "ghost", onclick: () => U().setView({ name: "matchBilan", id: e.id }) }, Icon("copy", 18), "Bilan PDF"), h("button", { class: "ghost", onclick: () => U().setView({ name: "boxEntry", id: e.id }) }, Icon("clipboard", 18), boxes.length ? "Modifier les stats de la feuille" : "Saisir les stats après match (feuille)")));
     if (e.live) return [...head, await (mode === "terrain" && window.TerrainUtil ? window.TerrainUtil.view(e, P, stints) : liveView(e, P, stints))];
     if (e.squad || stints.length || e.score_us != null || boxes.length) {
       releaseWake();
