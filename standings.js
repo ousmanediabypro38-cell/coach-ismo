@@ -97,18 +97,28 @@
   async function refresh(ts, team, manual) {
     const id = pouleId(ts.standings_poule);
     if (!id) { if (manual) U().toast("Renseigne d'abord le numéro de la poule."); return false; }
+    const old = await stored(ts);
+    const get = async () => { const r = await fetch(API + id, { headers: { accept: "application/json" } }); if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); };
+    const empty = j => !j || j.degraded || (!parse(j) && !(parseMatches(j) || []).length);
     let json;
     try {
-      const r = await fetch(API + id, { headers: { accept: "application/json" } });
-      if (!r.ok) throw new Error("HTTP " + r.status);
-      json = await r.json();
-    } catch (e) { if (manual) U().toast("Classement automatique impossible (" + (e.message || e) + "). Tu peux le saisir à la main."); return false; }
+      json = await get();
+      if (empty(json)) { await new Promise(r => setTimeout(r, 2500)); try { const j2 = await get(); if (!empty(j2)) json = j2; } catch (e) {} }   // la FFBB répond parfois vide : on réessaie une fois
+    } catch (e) {
+      await DB.setMeta("standings_" + ts.id, { ...old, lastTry: new Date().toISOString(), lastErr: String(e.message || e) });
+      if (manual) U().toast("Classement automatique impossible (" + (e.message || e) + "). Les dernières données sont conservées." + (old.at ? "" : " Tu peux le saisir à la main.")); return false;
+    }
     try { window.__standingsRaw = json; } catch (e) {}
     const rows = parse(json), matches = parseMatches(json) || [];
     const sample = (() => { try { const o = {}; for (const k of Object.keys(json || {}).slice(0, 12)) { const v = json[k]; o[k] = Array.isArray(v) ? "[" + v.length + " éléments] " + JSON.stringify(v[0] || null).slice(0, 700) : (typeof v === "object" && v ? "{" + Object.keys(v).slice(0, 8).join(",") + "}" : v); } return JSON.stringify(o, null, 1).slice(0, 2400); } catch (e) { return ""; } })();
-    if (!rows && !matches.length) { await DB.setMeta("standings_" + ts.id, { rows: [], rank: null, at: new Date().toISOString(), matches: [], sample }); if (manual) U().toast(json && (json.degraded || (Array.isArray(json.classements) && !json.classements.length)) ? "La poule n° " + id + " renvoie un classement vide. Vérifie le numéro (lien avec ?poule=…)." : "Réponse reçue mais format non reconnu : ouvre « Diagnostic » sous le classement."); return false; }
-    const s = rows ? summary(rows, meOf(ts, team)) : null;
-    await DB.setMeta("standings_" + ts.id, { rows: rows || [], rank: s, at: new Date().toISOString(), matches, sample });
+    if (!rows && !matches.length) {
+      // Réponse vide : on GARDE les dernières données valides (rien n'est effacé).
+      await DB.setMeta("standings_" + ts.id, { ...old, lastTry: new Date().toISOString(), lastErr: "vide", sample });
+      if (manual) U().toast(old.at ? "La FFBB renvoie une réponse vide pour l'instant. Je garde les données du " + new Date(old.at).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) + "." : "La poule n° " + id + " renvoie un classement vide. Vérifie le numéro (lien avec ?poule=…).");
+      return false;
+    }
+    const s = rows ? summary(rows, meOf(ts, team)) : (old.rank || null);
+    await DB.setMeta("standings_" + ts.id, { rows: rows || old.rows || [], rank: s, at: new Date().toISOString(), matches: matches.length ? matches : (old.matches || []), sample, lastTry: new Date().toISOString(), lastErr: null });
     if (manual) U().toast(s ? "Classement mis à jour : " + s : "Classement mis à jour. Indique le nom de ton équipe pour voir ta position.");
     return true;
   }
@@ -136,6 +146,7 @@
     const shownRank = st.rank || ts.standings_rank, when = (st.at || ts.standings_at) ? new Date(st.at || ts.standings_at).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : null;
     return h("section", { class: "card" }, h("h3", { class: "tight" }, "Classement de la poule"),
       h("p", { class: "sub" }, shownRank ? shownRank + (when ? " · mis à jour le " + when : "") : "Renseigne le numéro de ta poule pour le récupérer automatiquement, ou saisis ta position à la main."),
+      st.lastErr && st.at ? h("p", { class: "sub warnline" }, "La FFBB ne répond pas correctement pour l'instant (" + st.lastErr + "). Je garde les dernières données reçues, du " + when + ". Nouvel essai automatique plus tard.") : null,
       rows.length ? h("div", { class: "tbl" }, h("table", { class: "stats" },
         h("thead", {}, h("tr", {}, ["#", "Équipe", "J", "V", "D", "Pts", "Diff."].map((x, i) => h("th", { class: i > 1 ? "r" : "" }, x)))),
         h("tbody", {}, rows.map(r => h("tr", { class: meKey && norm(r.name).includes(meKey) ? "me" : "" }, h("td", {}, r.rank), h("td", {}, r.name), h("td", { class: "r" }, r.played ?? "—"), h("td", { class: "r" }, r.won ?? "—"), h("td", { class: "r" }, r.lost ?? "—"), h("td", { class: "r strong" }, r.pts ?? "—"),

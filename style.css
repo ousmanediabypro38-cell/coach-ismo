@@ -460,3 +460,4 @@ details.mini { margin:14px 0; } details.mini[open] > summary { margin-bottom:8px
 
 .trow { display:flex; align-items:center; gap:12px; margin:10px 0; } .trow .tlab { width:140px; flex:none; font-weight:600; } .trow select { flex:1; min-width:0; }
 @media (max-width:640px) { .trow { flex-wrap:wrap; } .trow .tlab { width:100%; } }
+.warnline{color:#e8b04a;font-size:13px;line-height:1.45;margin:6px 0 12px}
