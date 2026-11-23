@@ -119,17 +119,23 @@
       return [...head, ...sv];
     }
     releaseWake();
-    return [...head, setupView(e, players)];
+    const conv = (await DB.live("match_availability")).filter(a => a.event_id === e.id && a.convoked).map(a => a.player_id);
+    return [...head, setupView(e, conv.length ? players.filter(p => conv.includes(p.id)) : players, conv.length ? players.filter(p => !conv.includes(p.id)) : [])];
   }
 
   function releaseWake() { try { if (wake) wake.release(); } catch (x) {} wake = null; }
 
   // ---- avant le match ----
-  function setupView(e, players) {
+  function setupView(e, players, others) {
     let last = {}; try { last = JSON.parse(localStorage.getItem("ismo_len_" + e.team_season_id) || "{}"); } catch (x) {}
     const S = setup[e.id] || (setup[e.id] = { st: {}, per: last.per || 4, len: last.len || 10 });
     const get = p => S.st[p.id] == null ? 1 : S.st[p.id];
     const rerender = () => U().setView({ name: "match", id: e.id });
+    S.extra = S.extra || [];
+    others = others || [];
+    players = players.concat(others.filter(p => S.extra.includes(p.id)));
+    const rest = others.filter(p => !S.extra.includes(p.id));
+    const addSel = rest.length ? h("div", { class: "btns wrap" }, (() => { const sel = h("select", {}, rest.map(p => h("option", { value: p.id }, pname(p)))); return [sel, h("button", { type: "button", class: "small ghost", onclick: () => { S.extra.push(sel.value); rerender(); } }, "Ajouter un joueur non convoqué")]; })()) : null;
     if (!players.length) return [U().empty("users", "Aucun joueur dans cette équipe", "Ajoute d'abord les joueurs dans l'onglet Équipes.", null)];
     const nStart = players.filter(p => get(p) === 2).length;
     const per = h("select", { onchange: ev => { S.per = +ev.target.value; if (S.per === 2 && S.len === 10) S.len = 20; if (S.per === 4 && S.len === 20) S.len = 10; rerender(); } },
@@ -151,6 +157,7 @@
           h("div", { class: "att-name" }, h("span", { class: "num" }, p.jersey != null ? p.jersey : ""), h("span", {}, pname(p))),
           h("div", { class: "seg" }, [["Absent", 0, "absent"], ["Banc", 1, ""], ["Départ", 2, ""]].map(([l, k, c]) =>
             h("button", { type: "button", class: "segb " + c + (get(p) === k ? " on" : ""), onclick: () => { S.st[p.id] = k; rerender(); } }, l))))),
+        addSel,
         h("p", { class: "sub" }, nStart + " joueur(s) de départ sur 5."),
         h("div", { class: "btns wrap" },
           h("button", { onclick: () => go(true) }, Icon("ball", 18), "Lancer le suivi en direct"),
