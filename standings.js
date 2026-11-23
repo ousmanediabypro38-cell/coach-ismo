@@ -57,7 +57,7 @@
     if (hs == null && as == null) { const sk = Object.keys(o).filter(k => /score|resultat/i.test(k) && numOr(o[k]) != null); if (sk.length >= 2) { hs = numOr(o[sk[0]]); as = numOr(o[sk[1]]); } }
     const d = pick(o, ["date_rencontre", "dateRencontre", "date", "jour", "date_heure", "dateHeure"]), hr = pick(o, ["heure", "horaire", "heure_rencontre"]);
     let iso = null; if (d) { const t = new Date(String(d).includes(":") || !hr ? d : d + "T" + String(hr).replace("h", ":")); if (!isNaN(t)) iso = t.toISOString(); }
-    return { date: iso, raw: d ? String(d) : null, home: String(hn), away: String(an), hs, as, live: !!(o.live || o.en_cours || o.enCours), played: hs != null && as != null && !(hs === 0 && as === 0) };
+    return { date: iso, timed: !!hr || /[T ]\d{1,2}:\d{2}/.test(String(d || "")), raw: d ? String(d) : null, home: String(hn), away: String(an), hs, as, live: !!(o.live || o.en_cours || o.enCours), played: hs != null && as != null && !(hs === 0 && as === 0) };
   }
   function findMatches(node, depth) {
     if (depth > 6 || node == null) return null;
@@ -83,6 +83,40 @@
       if (m) { const mineHome = norm(m.home).includes(key); out.push({ e, m, us: mineHome ? m.hs : m.as, them: mineHome ? m.as : m.hs }); }
     }
     return out;
+  }
+  // Calendrier de l'appli aligné sur la FFBB : si un match est placé à une autre date (ou heure) que sur la FFBB, on le déplace.
+  const pday = iso => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris" }).format(new Date(iso));
+  const phm = iso => new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit" }).format(new Date(iso)).replace(":", ":");
+  function dateFixes(matches, events, me) {
+    const key = norm(me); if (!key || !matches || !matches.length) return [];
+    const used = new Set(), out = [];
+    for (const e of events.filter(x => x.kind === "match" && !x.deleted_at && x.status !== "annule" && x.starts_at && x.score_us == null).sort((a, b) => a.starts_at.localeCompare(b.starts_at))) {
+      const ow = firstWord(e.opponent); if (!ow) continue;
+      const cands = matches.map((m, i) => ({ m, i })).filter(({ m, i }) => m.date && !used.has(i) && ((norm(m.home).includes(key) && norm(m.away).includes(ow)) || (norm(m.away).includes(key) && norm(m.home).includes(ow))))
+        .map(c => ({ ...c, d: Math.abs(new Date(c.m.date) - new Date(e.starts_at)) })).filter(c => c.d < 35 * 864e5).sort((a, b) => a.d - b.d);
+      if (!cands.length) continue;
+      const { m, i } = cands[0]; used.add(i);
+      const hasTime = !!m.timed;
+      const newDay = pday(m.date), oldDay = pday(e.starts_at);
+      const newHM = hasTime ? phm(m.date) : phm(e.starts_at), oldHM = phm(e.starts_at);
+      if (newDay === oldDay && newHM === oldHM) continue;
+      const iso = new Date(newDay + "T" + newHM.replace("h", ":") + ":00").toISOString();
+      out.push({ e, from: e.starts_at, to: iso, day: newDay !== oldDay });
+    }
+    return out;
+  }
+  async function syncCalendar(ts, matches, me, manual) {
+    const evs = (await DB.live("events")).filter(e => e.team_season_id === ts.id), fixes = dateFixes(matches, evs, me);
+    if (!fixes.length) return 0;
+    const log = ((await DB.getMeta("calchg_" + ts.id)) || []).slice(0, 20), at = new Date().toISOString();
+    for (const f of fixes) {
+      const c = await DB.get("events", f.e.id); c.starts_at = f.to; await DB.save("events", c);
+      log.unshift({ opp: f.e.opponent, from: f.from, to: f.to, at });
+    }
+    await DB.setMeta("calchg_" + ts.id, log.slice(0, 20));
+    const lbl = iso => new Date(iso).toLocaleString("fr-FR", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" });
+    U().toast("Calendrier mis à jour d'après la FFBB : " + fixes.map(f => (f.e.opponent || "match") + " → " + lbl(f.to)).join(" · "), null, 9000);
+    return fixes.length;
   }
   const fmtD = iso => iso ? new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) : "";
   const ord = n => n === 1 ? "1er" : n + "e";
@@ -119,6 +153,7 @@
     }
     const s = rows ? summary(rows, meOf(ts, team)) : (old.rank || null);
     await DB.setMeta("standings_" + ts.id, { rows: rows || old.rows || [], rank: s, at: new Date().toISOString(), matches: matches.length ? matches : (old.matches || []), sample, lastTry: new Date().toISOString(), lastErr: null });
+    try { await syncCalendar(ts, matches.length ? matches : (old.matches || []), meOf(ts, team), manual); } catch (e) {}
     if (manual) U().toast(s ? "Classement mis à jour : " + s : "Classement mis à jour. Indique le nom de ton équipe pour voir ta position.");
     return true;
   }
@@ -140,7 +175,7 @@
       await DB.save("team_seasons", cur); if (toast) U().toast("Enregistré."); return cur;
     };
     const rows = Array.isArray(st.rows) ? st.rows : [];
-    const evs = await DB.live("events"), todo = pending(st.matches, evs.filter(e => e.team_season_id === ts.id), meOf(ts, team)), cal = st.matches || [];
+    const chg = (await DB.getMeta("calchg_" + ts.id)) || [], evs = await DB.live("events"), todo = pending(st.matches, evs.filter(e => e.team_season_id === ts.id), meOf(ts, team)), cal = st.matches || [];
     const mk = norm(meOf(ts, team));
     const meKey = norm(meOf(ts, team));
     const shownRank = st.rank || ts.standings_rank, when = (st.at || ts.standings_at) ? new Date(st.at || ts.standings_at).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : null;
@@ -151,6 +186,7 @@
         h("thead", {}, h("tr", {}, ["#", "Équipe", "J", "V", "D", "Pts", "Diff."].map((x, i) => h("th", { class: i > 1 ? "r" : "" }, x)))),
         h("tbody", {}, rows.map(r => h("tr", { class: meKey && norm(r.name).includes(meKey) ? "me" : "" }, h("td", {}, r.rank), h("td", {}, r.name), h("td", { class: "r" }, r.played ?? "—"), h("td", { class: "r" }, r.won ?? "—"), h("td", { class: "r" }, r.lost ?? "—"), h("td", { class: "r strong" }, r.pts ?? "—"),
           h("td", { class: "r" }, r.pf != null && r.pa != null ? (r.pf - r.pa > 0 ? "+" : "") + (r.pf - r.pa) : "—")))))) : null,
+      chg.length ? h("p", { class: "sub" }, "Calendrier recalé sur la FFBB : " + chg.slice(0, 3).map(c => (c.opp || "match") + " (" + new Date(c.from).toLocaleDateString("fr-FR", { day: "numeric", month: "short", timeZone: "Europe/Paris" }) + " → " + new Date(c.to).toLocaleDateString("fr-FR", { day: "numeric", month: "short", timeZone: "Europe/Paris" }) + ")").join(", ") + ".") : null,
       todo.length ? h("div", { class: "subcard" }, h("strong", {}, "Résultats trouvés sur la FFBB (" + todo.length + ")"), h("p", { class: "sub" }, "Ils ne sont reportés que si tu valides, et seulement sur des matchs sans score."),
         todo.map(t => h("div", { class: "item" }, h("div", { style: "flex:1;min-width:0" }, h("strong", {}, t.e.opponent + " : " + t.us + " – " + t.them), h("div", { class: "sub" }, fmtD(t.e.starts_at))),
           h("button", { class: "small", onclick: async () => { const c = await DB.get("events", t.e.id); if (c.score_us != null) { U().toast("Ce match a déjà un score."); return; } c.score_us = t.us; c.score_them = t.them; c.status = "joue"; await DB.save("events", c); U().toast("Score reporté."); rerender(); } }, "Reporter")))) : null,
