@@ -55,8 +55,15 @@
     let hs = null, as = null;
     for (const [a, b] of SC) { if (o[a] != null || o[b] != null) { hs = numOr(o[a]); as = numOr(o[b]); break; } }
     if (hs == null && as == null) { const sk = Object.keys(o).filter(k => /score|resultat/i.test(k) && numOr(o[k]) != null); if (sk.length >= 2) { hs = numOr(o[sk[0]]); as = numOr(o[sk[1]]); } }
-    const d = pick(o, ["date_rencontre", "dateRencontre", "date", "jour", "date_heure", "dateHeure"]), hr = pick(o, ["heure", "horaire", "heure_rencontre"]);
-    let iso = null; if (d) { const t = new Date(String(d).includes(":") || !hr ? d : d + "T" + String(hr).replace("h", ":")); if (!isNaN(t)) iso = t.toISOString(); }
+    let d = pick(o, ["date_rencontre", "dateRencontre", "date", "jour", "date_heure", "dateHeure"]), hr = pick(o, ["heure", "horaire", "heure_rencontre"]);
+    let iso = null;
+    if (d) {
+      let ds = String(d).trim(), hs2 = hr ? String(hr).trim().replace("h", ":") : "";
+      const fr = ds.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})(?:[ T,]+(\d{1,2})[:h](\d{2}))?/);   // 21/11/2026 [20:00]
+      if (fr) { const hh = fr[4] != null ? fr[4].padStart(2, "0") + ":" + fr[5] : (hs2.match(/^\d{1,2}:\d{2}/) ? hs2.padStart(5, "0") : "00:00"); ds = fr[3] + "-" + fr[2].padStart(2, "0") + "-" + fr[1].padStart(2, "0") + "T" + hh + ":00"; if (fr[4] != null || hs2) hr = hr || "x"; }
+      else if (!ds.includes(":") && hs2) ds = ds.slice(0, 10) + "T" + hs2.padStart(5, "0") + ":00";
+      const t = new Date(ds); if (!isNaN(t)) iso = t.toISOString();
+    }
     return { date: iso, timed: !!hr || /[T ]\d{1,2}:\d{2}/.test(String(d || "")), raw: d ? String(d) : null, home: String(hn), away: String(an), hs, as, live: !!(o.live || o.en_cours || o.enCours), played: hs != null && as != null && !(hs === 0 && as === 0) };
   }
   function findMatches(node, depth) {
@@ -117,6 +124,15 @@
     const lbl = iso => new Date(iso).toLocaleString("fr-FR", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" });
     U().toast("Calendrier mis à jour d'après la FFBB : " + fixes.map(f => (f.e.opponent || "match") + " → " + lbl(f.to)).join(" · "), null, 9000);
     return fixes.length;
+  }
+  function whyLines(matches, events, me) {
+    const key = norm(me), L = [];
+    L.push("Mon équipe cherchée sous le nom : « " + (me || "—") + " » · matchs FFBB lus : " + (matches || []).length + " · avec une date : " + (matches || []).filter(m => m.date).length + " · dont les miens : " + (matches || []).filter(m => key && (norm(m.home).includes(key) || norm(m.away).includes(key))).length);
+    for (const e of events.filter(x => x.kind === "match" && !x.deleted_at && x.status !== "annule")) {
+      const ow = firstWord(e.opponent), mine = (matches || []).filter(m => ow && ((norm(m.home).includes(key) && norm(m.away).includes(ow)) || (norm(m.away).includes(key) && norm(m.home).includes(ow))));
+      L.push((e.opponent || "?") + " (appli : " + (e.starts_at || "").slice(0, 16) + (e.score_us != null ? ", score saisi" : "") + ") → " + (mine.length ? "FFBB : " + mine.map(m => (m.raw || "sans date") + " → " + (m.date ? m.date.slice(0, 16) : "date illisible")).join(" ; ") : (ow ? "aucun match trouvé sur la FFBB avec « " + ow + " »" : "nom d'adversaire à préciser")));
+    }
+    return L.join("\n");
   }
   const fmtD = iso => iso ? new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) : "";
   const ord = n => n === 1 ? "1er" : n + "e";
@@ -194,7 +210,7 @@
         h("div", { class: "tbl" }, h("table", { class: "stats" }, h("tbody", {}, [...cal].sort((a, b) => { const A = mk && (norm(a.home).includes(mk) || norm(a.away).includes(mk)) ? 0 : 1, B = mk && (norm(b.home).includes(mk) || norm(b.away).includes(mk)) ? 0 : 1; return A - B; }).map(m => h("tr", { class: mk && (norm(m.home).includes(mk) || norm(m.away).includes(mk)) ? "me" : "" }, h("td", {}, fmtD(m.date) || m.raw || ""), h("td", {}, m.home), h("td", { class: "r strong" }, m.played ? m.hs + " – " + m.as : "à venir"), h("td", {}, m.away))))))) : null,
       h("details", { class: "mini" }, h("summary", {}, "Diagnostic (si le calendrier n'apparaît pas)"),
         h("p", { class: "sub" }, "Matchs lus : " + cal.length + " · lignes de classement lues : " + rows.length + ". Fais une capture de ce bloc et envoie-la-moi."),
-        h("pre", { class: "diag" }, st.sample || "Touche d'abord « Mettre à jour maintenant ».")),
+        h("pre", { class: "diag" }, whyLines(cal, evs.filter(e => e.team_season_id === ts.id), meOf(ts, team)) + "\n\n" + (st.sample || "Touche d'abord « Mettre à jour maintenant »."))),
       U().field("Numéro de la poule (ou colle le lien de la poule)", poule), U().field("Nom de ton équipe dans le classement", me),
       h("details", { class: "mini" }, h("summary", {}, "Saisie manuelle et lien"), U().field("Position et bilan", rank), U().field("Lien de la page classement", url)),
       h("div", { class: "btns wrap" },
