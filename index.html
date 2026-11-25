@@ -10,6 +10,32 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div id="splash" class="run" hidden><button class="skip" id="skipIntro" type="button">Passer</button>
+<div class="stage"><svg viewBox="0 20 930 520" aria-hidden="true"><g class="glowcourt court">
+<!-- terrain FIBA 28 x 15 m : raquette 4,9 x 5,8 m, lancer franc r 1,8 m, 3 points à 6,75 m du panier -->
+<rect class="neon n1" pathLength="1" x="14" y="38.5" width="902" height="483" rx="4"/>
+<path class="neon n2" pathLength="1" d="M465 38.5V521.5"/><circle class="neon n2" pathLength="1" cx="465" cy="280" r="58"/>
+<path class="neon n3" pathLength="1" d="M14 201H200.8V359H14"/><path class="neon n3" pathLength="1" d="M916 201H729.2V359H916"/>
+<path class="neon n3" pathLength="1" d="M200.8 222A58 58 0 0 1 200.8 338"/><path class="neon n3" pathLength="1" d="M729.2 222A58 58 0 0 0 729.2 338"/>
+<path class="neon n4" pathLength="1" d="M14 67.5H110.3A217.4 217.4 0 0 1 110.3 492.5H14"/><path class="neon n4" pathLength="1" d="M916 67.5H819.7A217.4 217.4 0 0 0 819.7 492.5H916"/>
+<path class="neon n4" pathLength="1" d="M64.7 239.7A40.3 40.3 0 0 1 64.7 320.3"/><path class="neon n4" pathLength="1" d="M865.3 239.7A40.3 40.3 0 0 0 865.3 320.3"/>
+<circle class="neon n4" pathLength="1" cx="64.7" cy="280" r="7.4"/><circle class="neon n4" pathLength="1" cx="865.3" cy="280" r="7.4"/>
+<path class="neon n4" pathLength="1" d="M52.7 251V309"/><path class="neon n4" pathLength="1" d="M877.3 251V309"/>
+</g>
+<rect class="badge" pathLength="1" x="437" y="252" width="56" height="56" rx="14"/>
+<path class="seven pop" pathLength="1" d="M449 265H479L463 296"/>
+<circle class="wave" cx="465" cy="280" r="36"/><circle class="wave w2" cx="465" cy="280" r="36"/><circle class="wave w3" cx="465" cy="280" r="36"/>
+<g class="ball"><circle cx="465" cy="280" r="17" fill="#e8742c"/><path d="M448 280h34M465 263v34M453 268q12 12 0 24M477 268q-12 12 0 24" stroke="#080b09" stroke-width="1.6" fill="none"/></g>
+</svg><div class="word" id="introWord"></div><div class="sub">COACHING · BASKET</div></div></div>
+<script>
+(function(){var s=document.getElementById("splash");if(!s)return;var k="ismo_intro_at",now=Date.now(),last=0;try{last=+localStorage.getItem(k)||0}catch(e){}
+if(now-last<20*60*1000){s.remove();return}
+try{localStorage.setItem(k,String(now))}catch(e){}
+var w=document.getElementById("introWord");w.innerHTML="COACH ISMO".split("").map(function(c,i){return '<span class="'+(i>5?"b":"")+'" style="--i:'+i+'">'+(c===" "?"&nbsp;":c)+"</span>"}).join("");
+s.hidden=false;var done=false;function end(){if(done)return;done=true;s.classList.add("out");setTimeout(function(){s.remove()},700)}
+s.addEventListener("click",end);setTimeout(end,5400)})();
+</script>
+
   <section id="login" class="login hidden">
     <div class="login-7" aria-hidden="true">7</div>
     <div class="login-panel">

@@ -32,14 +32,16 @@
     const svg = el("svg", { viewBox: "0 0 930 560", class: "tr-svg", role: "img", "aria-label": "Terrain" });
     const f = el("filter", { id: "trglow", x: "-10%", y: "-10%", width: "120%", height: "120%" }, el("feGaussianBlur", { stdDeviation: 3, result: "b" }), el("feMerge", {}, el("feMergeNode", { in: "b" }), el("feMergeNode", { in: "SourceGraphic" })));
     const g = el("g", { fill: "none", stroke: "#3ccf8b", "stroke-width": 3, filter: "url(#trglow)" },
-      el("rect", { x: 14, y: 34, width: 902, height: 492, rx: 4 }), el("line", { x1: 465, y1: 34, x2: 465, y2: 526 }), el("circle", { cx: 465, cy: 280, r: 74 }),
-      el("rect", { x: 14, y: 196, width: 190, height: 168 }), el("rect", { x: 726, y: 196, width: 190, height: 168 }),
-      el("path", { d: "M204 222 A58 58 0 0 1 204 338" }), el("path", { d: "M726 222 A58 58 0 0 0 726 338" }),
-      el("path", { d: "M14 82 H112 A210 210 0 0 1 112 478 H14" }), el("path", { d: "M916 82 H818 A210 210 0 0 0 818 478 H916" }),
-      el("circle", { cx: 52, cy: 280, r: 10 }), el("circle", { cx: 878, cy: 280, r: 10 }), el("line", { x1: 36, y1: 256, x2: 36, y2: 304 }), el("line", { x1: 894, y1: 256, x2: 894, y2: 304 }));
+      // Géométrie FIBA (28 × 15 m, 32,2 px/m) : raquette 4,9 × 5,8 m, lancer franc r 1,8 m, 3 points à 6,75 m du panier (panier à 1,575 m de la ligne de fond)
+      el("rect", { x: 14, y: 38.5, width: 902, height: 483, rx: 4 }), el("line", { x1: 465, y1: 38.5, x2: 465, y2: 521.5 }), el("circle", { cx: 465, cy: 280, r: 58 }),
+      el("rect", { x: 14, y: 201, width: 186.8, height: 158 }), el("rect", { x: 729.2, y: 201, width: 186.8, height: 158 }),
+      el("path", { d: "M200.8 222 A58 58 0 0 1 200.8 338" }), el("path", { d: "M729.2 222 A58 58 0 0 0 729.2 338" }),
+      el("path", { d: "M14 67.5 H110.3 A217.4 217.4 0 0 1 110.3 492.5 H14" }), el("path", { d: "M916 67.5 H819.7 A217.4 217.4 0 0 0 819.7 492.5 H916" }),
+      el("path", { d: "M64.7 239.7 A40.3 40.3 0 0 1 64.7 320.3" }), el("path", { d: "M865.3 239.7 A40.3 40.3 0 0 0 865.3 320.3" }),
+      el("circle", { cx: 64.7, cy: 280, r: 7.4 }), el("circle", { cx: 865.3, cy: 280, r: 7.4 }), el("line", { x1: 52.7, y1: 251, x2: 52.7, y2: 309 }), el("line", { x1: 877.3, y1: 251, x2: 877.3, y2: 309 }));
     svg.append(el("defs", {}, f), el("rect", { x: 0, y: 0, width: 930, height: 560, rx: 18, fill: "#060d08" }), g,
-      logo ? el("image", { href: logo, x: 405, y: 218, width: 120, height: 124, preserveAspectRatio: "xMidYMid meet", opacity: 0.95 })
-        : el("text", { x: 465, y: 307, "text-anchor": "middle", "font-size": 84, "font-weight": 700, fill: "#3ccf8b", "font-family": "Barlow Condensed, sans-serif", opacity: 0.85 }, "7"));
+      logo ? el("image", { href: logo, x: 423, y: 237, width: 84, height: 86, preserveAspectRatio: "xMidYMid meet", opacity: 0.95 })
+        : el("text", { x: 465, y: 302, "text-anchor": "middle", "font-size": 64, "font-weight": 700, fill: "#3ccf8b", "font-family": "Barlow Condensed, sans-serif", opacity: 0.85 }, "7"));
     return svg;
   }
 
