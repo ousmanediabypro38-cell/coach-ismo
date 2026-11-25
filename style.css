@@ -518,3 +518,9 @@ details.mini { margin:14px 0; } details.mini[open] > summary { margin-bottom:8px
 @keyframes sp-fade{to{opacity:1}}
 #splash .skip{position:fixed;top:14px;right:16px;color:var(--dim);font:600 14px var(--ui);background:none;border:1px solid #1c2620;border-radius:999px;padding:7px 15px}
 @media (prefers-reduced-motion:reduce){#splash.run *{animation-duration:.01s!important;animation-delay:0s!important}}
+
+/* ---- Passage fluide entre les pages (≈ 0,25 s) ---- */
+@keyframes pgin { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
+#app.pgin { animation:pgin .26s cubic-bezier(.2,.7,.2,1); }
+.nav button, #tabs button { transition:background-color .2s ease, color .2s ease; }
+@media (prefers-reduced-motion: reduce) { #app.pgin { animation:none; } }

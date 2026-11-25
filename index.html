@@ -29,7 +29,7 @@
 </svg><div class="word" id="introWord"></div><div class="sub">COACHING · BASKET</div></div></div>
 <script>
 (function(){var s=document.getElementById("splash");if(!s)return;var k="ismo_intro_at",now=Date.now(),last=0;try{last=+localStorage.getItem(k)||0}catch(e){}
-if(now-last<20*60*1000){s.remove();return}
+if(now-last<7*60*1000){s.remove();return}
 try{localStorage.setItem(k,String(now))}catch(e){}
 var w=document.getElementById("introWord");w.innerHTML="COACH ISMO".split("").map(function(c,i){return '<span class="'+(i>5?"b":"")+'" style="--i:'+i+'">'+(c===" "?"&nbsp;":c)+"</span>"}).join("");
 s.hidden=false;var done=false;function end(){if(done)return;done=true;s.classList.add("out");setTimeout(function(){s.remove()},700)}

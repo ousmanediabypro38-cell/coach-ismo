@@ -137,12 +137,14 @@
     if (!uid) return;
     const root = app(), key = viewKey(view), keep = key === lastKey, y = window.scrollY;
     if (keep) root.style.minHeight = root.offsetHeight + "px";
-    root.replaceChildren();
-    if (view.name === "home") root.append(...(await homeView()).flat(Infinity).filter(x => x != null && x !== false));
-    else if (view.name === "team") root.append(...(await teamView(view.id)).flat(Infinity).filter(x => x != null && x !== false));
-    else if (view.name === "teamForm") root.append(await teamForm(view));
-    else if (view.name === "playerForm") root.append(await playerForm(view.tsId, view.mId));
-    else if (window.Views && Views[view.name]) root.append(...[].concat(await Views[view.name](view)).flat(Infinity).filter(x => x != null && x !== false));
+    const out = [], F = x => x.flat(Infinity).filter(x => x != null && x !== false);
+    if (view.name === "home") out.push(...F(await homeView()));
+    else if (view.name === "team") out.push(...F(await teamView(view.id)));
+    else if (view.name === "teamForm") out.push(await teamForm(view));
+    else if (view.name === "playerForm") out.push(await playerForm(view.tsId, view.mId));
+    else if (window.Views && Views[view.name]) out.push(...F([].concat(await Views[view.name](view))));
+    root.replaceChildren(...out);
+    if (!keep && !matchMedia("(prefers-reduced-motion: reduce)").matches) { root.classList.remove("pgin"); void root.offsetWidth; root.classList.add("pgin"); }
     document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.tab === (TAB[view.name] || "teams")));
     try { const act = document.querySelector("#tabs button.active"); if (act && getComputedStyle(document.getElementById("tabs")).flexDirection === "row") act.scrollIntoView({ inline: "center", block: "nearest" }); } catch (e) {}
     refreshSyncPill(); backBar();
