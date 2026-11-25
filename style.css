@@ -473,43 +473,48 @@ details.mini { margin:14px 0; } details.mini[open] > summary { margin-bottom:8px
 .ovw .trend{margin:10px 0 4px;font-weight:600} .ovw .trend.up{color:#23b574} .ovw .trend.dn{color:#e0a02a} .ovw .trend.eq{color:var(--text)}
 .paper .bhead{margin-top:0} .paper .bkpis b{color:#0f1f17}
 
-/* ---- Animation d'ouverture ---- */
+/* ---- Animation d'ouverture (tout est limité à #splash) ---- */
 #splash[hidden]{display:none}
-
 #splash{font-family:var(--num);color:var(--text);position:fixed;z-index:99999;inset:0;display:grid;place-items:center;background:radial-gradient(ellipse at 50% 46%,#0d1a13 0%,var(--bg) 66%);transition:opacity .6s ease,transform .6s ease}
 #splash.out{opacity:0;transform:scale(1.05);pointer-events:none}
 #splash .stage{width:min(94vw,820px);text-align:center}
 #splash svg{width:100%;height:auto;display:block;overflow:visible}
-.neon{fill:none;stroke:var(--green-hi);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 3px var(--green)) drop-shadow(0 0 9px rgba(35,181,116,.75));
+#splash .neon{fill:none;stroke:var(--green-hi);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 3px var(--green)) drop-shadow(0 0 9px rgba(35,181,116,.75));
   stroke-dasharray:1;stroke-dashoffset:1;opacity:.95}
-.run .n1{animation:draw 1.3s .15s cubic-bezier(.55,.1,.25,1) forwards}
-.run .n2{animation:draw 1s .5s cubic-bezier(.55,.1,.25,1) forwards}
-.run .n3{animation:draw .9s .75s cubic-bezier(.55,.1,.25,1) forwards}
-.run .n4{animation:draw .8s 1s cubic-bezier(.55,.1,.25,1) forwards}
-@keyframes draw{to{stroke-dashoffset:0}}
-.flicker{animation:none}.run .court{animation:flick .5s .05s steps(1) 1}
-@keyframes flick{0%{opacity:0}30%{opacity:1}45%{opacity:.3}60%{opacity:1}}
-/* le 7 : se trace dans le rond central puis se remplit */
+#splash.run .n1{animation:sp-draw 1.3s .15s cubic-bezier(.55,.1,.25,1) forwards}
+#splash.run .n2{animation:sp-draw 1s .5s cubic-bezier(.55,.1,.25,1) forwards}
+#splash.run .n3{animation:sp-draw .9s .75s cubic-bezier(.55,.1,.25,1) forwards}
+#splash.run .n4{animation:sp-draw .8s 1s cubic-bezier(.55,.1,.25,1) forwards}
+@keyframes sp-draw{to{stroke-dashoffset:0}}
+#splash .flicker{animation:none}
+#splash.run .court{animation:sp-flick .5s .05s steps(1) 1}
+@keyframes sp-flick{0%{opacity:0}30%{opacity:1}45%{opacity:.3}60%{opacity:1}}
+#splash /* le 7 : se trace dans le rond central puis se remplit */
 .seven{fill:rgba(35,181,116,0);stroke:var(--green-hi);stroke-width:7;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1;stroke-dashoffset:1;filter:drop-shadow(0 0 4px var(--green)) drop-shadow(0 0 14px rgba(35,181,116,.8))}
-.run .seven{animation:draw .9s 1.45s cubic-bezier(.5,.1,.3,1) forwards}
-.badge{fill:rgba(35,181,116,0);stroke:var(--green-hi);stroke-width:2.4;stroke-dasharray:1;stroke-dashoffset:1;filter:drop-shadow(0 0 5px var(--green))}
-
-.ball{opacity:0;transform-box:fill-box;transform-origin:center}
-.run .ball{animation:drop 1.15s 2.25s cubic-bezier(.33,.1,.55,1) forwards}
-@keyframes drop{0%{opacity:1;transform:translateY(-330px) scale(.8)}40%{opacity:1;transform:translateY(0) scale(1)}58%{opacity:1;transform:translateY(-62px)}74%{opacity:1;transform:translateY(0)}86%{opacity:1;transform:translateY(-16px)}100%{opacity:0;transform:translateY(0) scale(.7)}}
-.wave{fill:none;stroke:var(--green-hi);stroke-width:3;opacity:0;transform-box:fill-box;transform-origin:center;filter:drop-shadow(0 0 6px var(--green))}
-.run .wave{animation:wave 1.4s 2.62s ease-out forwards}.run .w2{animation-delay:2.85s}.run .w3{animation-delay:3.08s}
-@keyframes wave{0%{opacity:.9;transform:scale(.25);stroke-width:4}100%{opacity:0;transform:scale(5.2);stroke-width:1}}
-.run .seven{} .run .pop{animation:draw .9s 1.45s cubic-bezier(.5,.1,.3,1) forwards,fill .5s 2.75s ease forwards}.run .badge{animation:draw .7s 1.35s ease forwards,bfill .5s 2.75s ease forwards}
-@keyframes fill{to{stroke:#03160c;filter:none}}@keyframes bfill{to{fill:#23b574}}
-.run .glowcourt{animation:flash .9s 2.65s ease}
-@keyframes flash{40%{filter:brightness(1.9)}}
-.word{margin-top:6px;font-weight:700;letter-spacing:.2em;font-size:clamp(30px,7vw,54px);padding-left:.2em;line-height:1}
-.word span{display:inline-block;opacity:0;transform:translateY(16px);filter:blur(6px)}
-.word .b{color:var(--green)}
-.run .word span{animation:rise .6s cubic-bezier(.2,.8,.2,1) forwards;animation-delay:calc(3.0s + var(--i)*.06s)}
-@keyframes rise{to{opacity:1;transform:none;filter:none}}
-.sub{margin-top:8px;color:var(--dim);font-size:15px;letter-spacing:.34em;opacity:0}
-.run .sub{animation:fade .7s 3.6s forwards}@keyframes fade{to{opacity:1}}
+#splash.run .seven{animation:sp-draw .9s 1.45s cubic-bezier(.5,.1,.3,1) forwards}
+#splash .badge{fill:rgba(35,181,116,0);stroke:var(--green-hi);stroke-width:2.4;stroke-dasharray:1;stroke-dashoffset:1;filter:drop-shadow(0 0 5px var(--green))}
+#splash .ball{opacity:0;transform-box:fill-box;transform-origin:center}
+#splash.run .ball{animation:sp-drop 1.15s 2.25s cubic-bezier(.33,.1,.55,1) forwards}
+@keyframes sp-drop{0%{opacity:1;transform:translateY(-330px) scale(.8)}40%{opacity:1;transform:translateY(0) scale(1)}58%{opacity:1;transform:translateY(-62px)}74%{opacity:1;transform:translateY(0)}86%{opacity:1;transform:translateY(-16px)}100%{opacity:0;transform:translateY(0) scale(.7)}}
+#splash .wave{fill:none;stroke:var(--green-hi);stroke-width:3;opacity:0;transform-box:fill-box;transform-origin:center;filter:drop-shadow(0 0 6px var(--green))}
+#splash.run .wave{animation:sp-wave 1.4s 2.62s ease-out forwards}
+#splash.run .w2{animation-delay:2.85s}
+#splash.run .w3{animation-delay:3.08s}
+@keyframes sp-wave{0%{opacity:.9;transform:scale(.25);stroke-width:4}100%{opacity:0;transform:scale(5.2);stroke-width:1}}
+#splash.run .seven{}
+#splash.run .pop{animation:sp-draw .9s 1.45s cubic-bezier(.5,.1,.3,1) forwards,sp-fill .5s 2.75s ease forwards}
+#splash.run .badge{animation:sp-draw .7s 1.35s ease forwards,sp-bfill .5s 2.75s ease forwards}
+@keyframes sp-fill{to{stroke:#03160c;filter:none}}
+@keyframes sp-bfill{to{fill:#23b574}}
+#splash.run .glowcourt{animation:sp-flash .9s 2.65s ease}
+@keyframes sp-flash{40%{filter:brightness(1.9)}}
+#splash .word{margin-top:6px;font-weight:700;letter-spacing:.2em;font-size:clamp(30px,7vw,54px);padding-left:.2em;line-height:1}
+#splash .word span{display:inline-block;opacity:0;transform:translateY(16px);filter:blur(6px)}
+#splash .word .b{color:var(--green)}
+#splash.run .word span{animation:sp-rise .6s cubic-bezier(.2,.8,.2,1) forwards;animation-delay:calc(3.0s + var(--i)*.06s)}
+@keyframes sp-rise{to{opacity:1;transform:none;filter:none}}
+#splash .sub{margin-top:8px;color:var(--dim);font-size:15px;letter-spacing:.34em;opacity:0}
+#splash.run .sub{animation:sp-fade .7s 3.6s forwards}
+@keyframes sp-fade{to{opacity:1}}
 #splash .skip{position:fixed;top:14px;right:16px;color:var(--dim);font:600 14px var(--ui);background:none;border:1px solid #1c2620;border-radius:999px;padding:7px 15px}
-@media (prefers-reduced-motion:reduce){.run *{animation-duration:.01s!important;animation-delay:0s!important}}
+@media (prefers-reduced-motion:reduce){#splash.run *{animation-duration:.01s!important;animation-delay:0s!important}}
