@@ -144,6 +144,7 @@
     const go = async live => {
       const starters = players.filter(p => get(p) === 2).map(p => p.id);
       if (live && starters.length !== 5) { U().toast("Choisis exactement 5 joueurs de départ."); return; }
+      if (window.NumbersUtil && (await window.NumbersUtil.confirm(e.team_season_id, players.filter(p => get(p) > 0))) === false) return;   // numéros de maillot : manquants / doublons entre sélectionnés
       const cur = await DB.get("events", e.id);
       cur.nb_periods = S.per; cur.game_min = +len.value || S.len; try { localStorage.setItem("ismo_len_" + e.team_season_id, JSON.stringify({ per: S.per, len: cur.game_min })); } catch (x) {} cur.squad = players.filter(p => get(p) > 0).map(p => p.id);
       cur.live = live ? { q: 1, qstart: null, court: starters, last: null } : null;
