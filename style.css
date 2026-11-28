@@ -524,3 +524,17 @@ details.mini { margin:14px 0; } details.mini[open] > summary { margin-bottom:8px
 #app.pgin { animation:pgin .26s cubic-bezier(.2,.7,.2,1); }
 .nav button, #tabs button { transition:background-color .2s ease, color .2s ease; }
 @media (prefers-reduced-motion: reduce) { #app.pgin { animation:none; } }
+
+/* ---- Fenêtre flottante ---- */
+.mback { position:fixed; inset:0; z-index:9000; display:grid; place-items:center; padding:16px; background:rgba(2,6,4,.66); backdrop-filter:blur(3px); animation:mfade .18s ease; }
+.mback.out { opacity:0; transition:opacity .18s ease; }
+.mbox { width:min(560px,100%); max-height:min(86vh,720px); display:flex; flex-direction:column; background:var(--s1,#101512); border:1px solid var(--line2); border-radius:16px; box-shadow:0 24px 60px rgba(0,0,0,.55); animation:mpop .22s cubic-bezier(.2,.8,.2,1); }
+.mhead { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:16px 18px 6px; } .mhead h3 { margin:0; }
+.mbody { padding:6px 18px 12px; overflow:auto; } .mfoot { display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; padding:12px 18px 16px; border-top:1px solid var(--line2); }
+.mgrp { display:flex; flex-direction:column; gap:3px; padding:10px 12px; margin:8px 0; border:1px solid var(--line2); border-radius:10px; } .mgrp.ok { border-color:var(--green); } .mgrp.warn { border-color:#e0a02a; } .mgrp span { color:var(--mut); font-size:.92rem; }
+.mlist { display:grid; gap:8px; margin:10px 0; } .mrow { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.3fr); gap:10px; align-items:center; padding:8px 10px; border:1px solid var(--line2); border-radius:10px; } .mrow.ok { border-color:rgba(35,181,116,.45); } .mrow.new { border-color:#e0a02a; } .mtxt { font-weight:600; overflow-wrap:anywhere; }
+@keyframes mfade { from { opacity:0; } } @keyframes mpop { from { opacity:0; transform:translateY(14px) scale(.98); } }
+@media (max-width:520px) { .mrow { grid-template-columns:1fr; } }
+/* ---- Séance imprimée ---- */
+.sblock { display:grid; grid-template-columns:70px 1fr; gap:12px; padding:10px 0; border-bottom:1px solid #dbe3de; break-inside:avoid; } .sat { font-weight:700; color:#15201a; } .sat small { display:block; font-weight:500; color:#5b6b61; }
+.stitle { display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; color:#15201a; } .skind { font-size:.78rem; color:#157a4e; border:1px solid #157a4e; border-radius:999px; padding:1px 8px; }

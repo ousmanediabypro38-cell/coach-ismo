@@ -136,7 +136,9 @@
       const cur = mine[p.id] || { id: await attId(s.id, p.id), session_id: s.id, player_id: p.id, status: "present", group_label: null };
       const next = { ...cur, ...patch };
       if (next.status !== "present") next.group_label = null;
+      const wasComplete = roster.every(r => mine[r.p.id]), lastOne = roster.filter(r => !mine[r.p.id]).length === 1 && !mine[p.id];
       await DB.save("session_attendance", next); rerender();
+      if (lastOne && !wasComplete && window.PresenceUtil) setTimeout(() => window.PresenceUtil.confirm(s, rerender), 250);   // dernier joueur noté : fenêtre de confirmation
     };
     const status = p => (mine[p.id] ? mine[p.id].status : null);
     const count = k => roster.filter(r => status(r.p) === k).length;
@@ -147,6 +149,9 @@
         h("div", { class: "sub" }, noted ? count("present") + " présent" + (count("present") > 1 ? "s" : "") + ", " + count("absent") + " absent" + (count("absent") > 1 ? "s" : "") + ", " + count("blesse") + " blessé" + (count("blesse") > 1 ? "s" : "")
           + (groupCounts.length ? " — " + groupCounts.map(([g, n]) => "groupe " + g + " : " + n).join(", ") : "") : "Appel pas encore fait."),
         h("button", { class: "small ghost", onclick: async () => { for (const r of roster) if (!mine[r.p.id]) { const id = await attId(s.id, r.p.id); await DB.save("session_attendance", { id, session_id: s.id, player_id: r.p.id, status: "present", group_label: null }); } rerender(); } }, Icon("check", 16), "Tous présents")),
+      h("div", { class: "btns wrap", style: "margin:8px 0" },
+        h("button", { class: "small ghost", onclick: () => window.PresenceUtil.byList(s, rerender) }, Icon("users", 16), "Appel par liste de prénoms"),
+        h("button", { class: "small", onclick: () => window.PresenceUtil.confirm(s, rerender) }, Icon("check", 16), "Valider l'appel")),
       h("div", { class: "att" }, roster.map(({ m, p }) => {
         const st = status(p), a = mine[p.id];
         return h("div", { class: "att-row" },
@@ -225,6 +230,7 @@
       h("div", { class: "btns wrap" },
         h("button", { class: "small", onclick: () => U().setView({ name: "sessionForm", id: s.id }) }, Icon("edit", 18), "Modifier"),
         h("button", { class: "small ghost", onclick: () => U().setView({ name: "sessionForm", dupFrom: s.id }) }, Icon("copy", 18), "Copier vers une autre date"),
+        h("button", { class: "small ghost", onclick: () => U().setView({ name: "sessionPrint", id: s.id }) }, Icon("copy", 18), "Imprimer / PDF"),
         h("button", { class: "small ghost", onclick: () => U().setView({ name: "claudePrep", subject: "session", target: s.id }) }, "Préparer pour Claude"),
         h("button", { class: "small ghost danger", onclick: async () => {
           if (!confirm("Supprimer cette séance et son déroulé ?")) return;
