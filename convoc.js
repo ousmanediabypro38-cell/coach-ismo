@@ -139,7 +139,9 @@
       const id = await sha("avail:" + e.id + ":" + p.id), old = mine[p.id];
       if (old && !old.deleted_at && old.status === status) { await DB.remove("match_availability", old); rerender(); return; }
       const row = { id, event_id: e.id, player_id: p.id, status, convoked: status === "present", source: "coach", answered_at: new Date().toISOString(), deleted_at: null };
+      const lastOne = roster.filter(p => !mine[p.id] || mine[p.id].deleted_at).length === 1 && (!old || old.deleted_at);
       await DB.save("match_availability", old ? { ...old, ...row } : row); rerender();
+      if (lastOne && window.PresenceUtil) setTimeout(() => window.PresenceUtil.confirm(window.PresenceUtil.matchCfg(e), rerender), 250);   // dernier joueur noté : fenêtre de confirmation
     };
     const toggleConvoked = async p => { const old = mine[p.id]; if (!old) return; old.convoked = !old.convoked; await DB.save("match_availability", old); rerender(); };
     const cnt = s => roster.filter(p => mine[p.id] && !mine[p.id].deleted_at && mine[p.id].status === s).length;
@@ -238,7 +240,8 @@
               h("div", { class: "seg" }, Object.entries(ST).map(([k, l]) => h("button", { type: "button", class: "segb " + (k === "absent" ? "absent" : "") + (a && a.status === k ? " on" : ""), onclick: () => setStatus(p, k) }, l)))));
         }) : h("p", { class: "sub" }, "Aucun joueur dans cette équipe."),
         h("h3", {}, "Coller la liste des présents"), ta,
-        h("div", { class: "btns wrap" }, h("button", { class: "small", onclick: applyPaste }, "Marquer ces joueurs présents"),
+        h("div", { class: "btns wrap" }, h("button", { class: "small", onclick: () => { const names = paste.text.trim(); window.PresenceUtil.byList(window.PresenceUtil.matchCfg(e), rerender, names); paste.text = ""; } }, "Vérifier et marquer présents"),
+          h("button", { class: "small ghost", onclick: () => window.PresenceUtil.confirm(window.PresenceUtil.matchCfg(e), rerender) }, Icon("check", 16), "Valider les présences"),
           noAnswer.length ? h("button", { class: "small ghost", onclick: async () => { for (const p of noAnswer) { const id = await sha("avail:" + e.id + ":" + p.id), old = mine[p.id];
             await DB.save("match_availability", old ? { ...old, status: "absent", convoked: false, deleted_at: null } : { id, event_id: e.id, player_id: p.id, status: "absent", convoked: false, source: "coach", answered_at: new Date().toISOString() }); } rerender(); } }, "Le reste : absents") : null),
         paste.msg ? h("p", { class: "sub" }, paste.msg) : null),
