@@ -281,16 +281,24 @@
     const pos = h("input", { placeholder: "ex. P.2/3", value: p && p.position ? p.position : "" });
     const num = h("input", { type: "number", min: 0, max: 99, value: m && m.jersey_number != null ? m.jersey_number : "" });
     const back = () => setView({ name: "team", id: tsId });
+    let aliases = window.Names ? Names.aliasesOf(p) : [];
+    const chips = h("div", {}), aIn = h("input", { placeholder: "Ajouter un surnom…" });
+    const drawChips = () => chips.replaceChildren(...aliases.map(a => h("span", { class: "chip2" }, a, h("button", { type: "button", class: "chipx", "aria-label": "Retirer " + a, onclick: () => { aliases = aliases.filter(x => x !== a); drawChips(); } }, "✕"))));
+    const addAlias = () => { const t = window.Names ? Names.cap(aIn.value) : aIn.value.trim(); if (t && !aliases.some(x => x.toLowerCase() === t.toLowerCase())) aliases.push(t); aIn.value = ""; drawChips(); };
+    aIn.addEventListener("keydown", ev => { if (ev.key === "Enter") { ev.preventDefault(); addAlias(); } });
+    drawChips();
     return h("form", { class: "card", onsubmit: async e => {
       e.preventDefault();
-      const data = { first_name: first.value.trim(), last_name: last.value.trim() || null, birth_year: year.value ? +year.value : null, position: pos.value.trim() || null };
+      if (aIn.value.trim()) addAlias();
+      const C = window.Names ? Names.cap : (x => x);
+      const data = { first_name: C(first.value), last_name: C(last.value) || null, aliases, birth_year: year.value ? +year.value : null, position: pos.value.trim() || null };
       const pl = await DB.save("players", p ? { ...p, ...data } : data);
       const jersey = num.value === "" ? null : +num.value;
       await DB.save("memberships", m ? { ...m, jersey_number: jersey } : { player_id: pl.id, team_season_id: tsId, jersey_number: jersey });
       back();
     } },
       h("h2", {}, p ? "Modifier le joueur" : "Nouveau joueur"),
-      field("Prénom", first), field("Nom", last), field("Année de naissance", year), field("Poste", pos), field("Numéro de maillot", num),
+      field("Prénom", first), field("Nom", last), h("div", { class: "field" }, h("label", {}, "Surnoms et autres écritures ", h("span", { class: "sub" }, "(reconnus à l'appel)")), chips, h("div", { class: "aliasadd" }, aIn, h("button", { type: "button", class: "ghost", onclick: addAlias }, "Ajouter"))), field("Année de naissance", year), field("Poste", pos), field("Numéro de maillot", num),
       h("button", { type: "submit" }, "Enregistrer"),
       h("button", { type: "button", class: "ghost", onclick: back }, "Annuler"),
       m ? h("button", { type: "button", class: "ghost danger", onclick: async () => {
@@ -326,7 +334,7 @@
       const key = [r.first, r.last].filter(Boolean).join(" ").toLowerCase();
       if (have.has(key)) continue;
       have.add(key);
-      const pl = await DB.save("players", { first_name: r.first, last_name: r.last || null, position: r.pos || null, birth_year: /^\d{4}$/.test(r.year) ? +r.year : null });
+      const pl = await DB.save("players", { first_name: window.Names ? Names.cap(r.first) : r.first, last_name: (window.Names ? Names.cap(r.last) : r.last) || null, position: r.pos || null, birth_year: /^\d{4}$/.test(r.year) ? +r.year : null });
       await DB.save("memberships", { player_id: pl.id, team_season_id: tsId, jersey_number: /^\d{1,2}$/.test(r.num) ? +r.num : null });
       n++;
     }

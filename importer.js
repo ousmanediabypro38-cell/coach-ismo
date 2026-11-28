@@ -103,7 +103,7 @@
           if (!seen[k]) {
             const pid = await sha("player:" + tsId + ":" + k);
             const pl0 = await DB.get("players", pid);
-            seen[k] = pl0 && !pl0.deleted_at ? pl0 : await DB.save("players", { id: pid, first_name: a.name.trim(), last_name: null, deleted_at: null });
+            seen[k] = pl0 && !pl0.deleted_at ? pl0 : await DB.save("players", { id: pid, first_name: window.Names ? Names.cap(a.name) : a.name.trim(), last_name: null, deleted_at: null });
             const mid = await sha("membership:" + tsId + ":" + pid);
             if (!(await DB.get("memberships", mid))) await DB.save("memberships", { id: mid, player_id: pid, team_season_id: tsId, jersey_number: null });
           }
